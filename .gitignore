@@ -1,0 +1,7 @@
+.ipynb_checkpoints
+__pycache__
+.DS_Store
+data.json
+keys.json
+Untitled.ipynb
+**/*.jpg
