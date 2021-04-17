@@ -98,6 +98,7 @@ def show(update: Update, _: CallbackContext):
         
         return ConversationHandler.END
 
+
 FIELD, ADDED = range(2)
 
 def add_by_hand(update: Update, _: CallbackContext):
@@ -119,6 +120,7 @@ def add_by_hand(update: Update, _: CallbackContext):
 
     return FIELD
 
+
 def pick_field_by_hand(update: Update, context: CallbackContext):
     user = update.message.from_user
     user_id = user['id']
@@ -128,6 +130,7 @@ def pick_field_by_hand(update: Update, context: CallbackContext):
     update.message.reply_text(f'Отлично, теперь отправьте фотографию!')
 
     return ADDED
+
 
 def load_by_hand(update: Update, context: CallbackContext):
     user = update.message.from_user
@@ -145,6 +148,7 @@ def load_by_hand(update: Update, context: CallbackContext):
                                 reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False, resize_keyboard=True))
     
     return ConversationHandler.END
+
 
 def delete(update: Update, _: CallbackContext):
     raise NotImplementedError
