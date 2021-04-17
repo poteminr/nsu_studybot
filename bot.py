@@ -18,14 +18,14 @@ SUBJECT = range(1)
 def start(update: Update, _: CallbackContext):
     text_part_one = "Привет, это StudyBot, отправляй изображение домашней работы и мы составим личное расписние!\n"
     text_part_two =  "Введите номер группы '/group номер', чтобы начать работу!\n"
-    
-    update.message.reply_text(text_part_one + text_part_two, 
+    text_part_three = "Для использованиях в чате группы добавляйте /add как подпись к фото!\n"
+    update.message.reply_text(text_part_one + text_part_two + text_part_three, 
                               reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False, resize_keyboard=True))
 
 
 def group(update: Update, _: CallbackContext):
     user = update.message.from_user
-    user_id = user['id']
+    user_id = update.message.chat['id']
     user_group = int(update.message.text.split(" ")[1])
 
     logger.info("Group of %s: %s", user.first_name, user_group)
@@ -37,7 +37,7 @@ def group(update: Update, _: CallbackContext):
 
 def add(update: Update, _: CallbackContext):
     user = update.message.from_user
-    user_id = user['id']
+    user_id = update.message.chat['id']
     date = update.message.date
     file_id = update.message.photo[-1]['file_id']
  
@@ -56,7 +56,7 @@ def add(update: Update, _: CallbackContext):
 
 def view(update: Update, context: CallbackContext):
     user = update.message.from_user
-    user_id = user['id']
+    user_id = update.message.chat['id']
     user_group = read_data(user_id)['group']
 
     subjects, _ = get_group_seminars(user_group)
@@ -76,7 +76,7 @@ def view(update: Update, context: CallbackContext):
 
 def show(update: Update, _: CallbackContext):
     user = update.message.from_user
-    user_id = user['id']
+    user_id = update.message.chat['id']
     user_data = read_data(user_id)
 
     field = update.message.text
@@ -103,7 +103,7 @@ FIELD, ADDED = range(2)
 
 def add_by_hand(update: Update, _: CallbackContext):
     user = update.message.from_user
-    user_id = user['id']
+    user_id = update.message.chat['id']
     user_group = read_data(user_id)['group']
 
     subjects, _ = get_group_seminars(user_group)
@@ -123,7 +123,7 @@ def add_by_hand(update: Update, _: CallbackContext):
 
 def pick_field_by_hand(update: Update, context: CallbackContext):
     user = update.message.from_user
-    user_id = user['id']
+    user_id = update.message.chat['id']
  
     field = update.message.text
     context.user_data['choice'] = field
@@ -134,7 +134,7 @@ def pick_field_by_hand(update: Update, context: CallbackContext):
 
 def load_by_hand(update: Update, context: CallbackContext):
     user = update.message.from_user
-    user_id = user['id']
+    user_id = update.message.chat['id']
     # date = update.message.date
     file_id = update.message.photo[-1]['file_id']
  

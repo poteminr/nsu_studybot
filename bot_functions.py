@@ -50,7 +50,7 @@ def get_seminar_number(hour, minute):
 
 def preprocess_date(date):
     weekday = datetime.date.weekday(date) + 1
-    hour = date.hour 
+    hour = date.hour + 7
     minute = date.minute
 
     if hour % 24 < hour:
