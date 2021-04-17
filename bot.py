@@ -3,6 +3,7 @@ import logging
 from telegram import ReplyKeyboardMarkup, Update, ReplyKeyboardRemove
 from telegram.ext import Updater, CommandHandler, CallbackContext,MessageHandler, Filters, ConversationHandler
 from bot_functions import write_data, get_schedule, read_data, get_next_lesson_date
+from schedule_api import get_group_seminars, get_time_by_id
 
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
