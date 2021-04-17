@@ -97,8 +97,54 @@ def show(update: Update, _: CallbackContext):
                                 reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True))
         
         return ConversationHandler.END
-        
 
+FIELD, ADDED = range(2)
+
+def add_by_hand(update: Update, _: CallbackContext):
+    user = update.message.from_user
+    user_id = user['id']
+    user_group = read_data(user_id)['group']
+
+    subjects, _ = get_group_seminars(user_group)
+    value = len(subjects)
+    
+    part_one = subjects[:int(value / 3)]
+    part_two = subjects[int(value / 3):int(value / 3) * 2]
+    part_three = subjects[int(value / 3) * 2:]
+
+    keyboard = [part_one, part_two, part_three]
+
+    update.message.reply_text(f'Выберите необходимый предмет.', 
+                              reply_markup=ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True))
+
+    return FIELD
+
+def pick_field_by_hand(update: Update, context: CallbackContext):
+    user = update.message.from_user
+    user_id = user['id']
+ 
+    field = update.message.text
+    context.user_data['choice'] = field
+    update.message.reply_text(f'Отлично, теперь отправьте фотографию!')
+
+    return ADDED
+
+def load_by_hand(update: Update, context: CallbackContext):
+    user = update.message.from_user
+    user_id = user['id']
+    # date = update.message.date
+    file_id = update.message.photo[-1]['file_id']
+ 
+    logger.info("Photo of %s: %s", user.first_name, file_id)
+
+    field = context.user_data['choice']
+    
+    write_data(user_id, field, file_id)
+
+    update.message.reply_text(f'Фотография "{field}" успешно загружена!', 
+                                reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False, resize_keyboard=True))
+    
+    return ConversationHandler.END
 
 def delete(update: Update, _: CallbackContext):
     raise NotImplementedError
@@ -125,7 +171,6 @@ def main():
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(CommandHandler("group", group))
     dispatcher.add_handler(CommandHandler("delete", delete))
-    dispatcher.add_handler(MessageHandler(Filters.photo, add))
 
     conv_handler = ConversationHandler(
         entry_points=[MessageHandler(Filters.regex('^Просмотреть домашние задания$'), view)],
@@ -136,6 +181,18 @@ def main():
             )
 
     dispatcher.add_handler(conv_handler)
+
+    conv_handler_two = ConversationHandler(
+        entry_points=[MessageHandler(Filters.regex('^Добавить задание вручную$'), add_by_hand)],
+        states={
+            FIELD: [MessageHandler(Filters.text & ~(Filters.command), pick_field_by_hand)],
+            ADDED: [MessageHandler(Filters.photo & ~(Filters.command), load_by_hand)]
+            },
+            fallbacks=[CommandHandler('cancel', cancel)]
+            )
+
+    dispatcher.add_handler(conv_handler_two)
+    dispatcher.add_handler(MessageHandler(Filters.photo, add))
 
     updater.start_polling()
 

@@ -25,12 +25,6 @@ def read_data(user_id):
     return data[str(user_id)]
 
 
-# def get_next_lesson_date(user_id, field):
-#     next_lesson_date = '24.05.2021 9:00'
-    
-#     return next_lesson_date
-
-
 def get_seminar_number(hour, minute):
     number = None
     for lesson in range(1, 6):
@@ -69,7 +63,6 @@ def get_seminar_by_time(user_id, date):
     if weekday % 7 !=0:
         if seminar_number in schedule[weekday].keys():
             current_subject = schedule[weekday][seminar_number]
-            # next_lesson_date = get_next_lesson_date(user_id, current_subject)
 
     return current_subject
     
