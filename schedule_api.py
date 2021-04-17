@@ -19,6 +19,7 @@ def get_group_id(group_number):
 
 def get_group_schedule(group_number):
     group_id = get_group_id(group_number)
+
     method_url = f'https://table.nsu.ru/api/schedules/search?id_group={group_id}'
     result = requests.get(method_url, auth=HTTPBasicAuth(API_KEY, ''))
 
@@ -28,8 +29,7 @@ def get_group_schedule(group_number):
 def get_group_seminars(group_number):
     schedule = get_group_schedule(group_number).json()
     
-    seminars_set = []
-    
+    seminars_set = [] 
     seminars = {}
     
     for lesson in schedule:
@@ -44,11 +44,17 @@ def get_group_seminars(group_number):
     return list(set(seminars_set)), seminars 
 
 
-def get_time_by_id(id_time):
+def get_seminar_times():
     method_url = 'https://table.nsu.ru/api/time'
     result = requests.get(method_url, auth=HTTPBasicAuth(API_KEY, ''))
+    
+    return result.json()
 
-    seminar = result.json()[id_time-1]
+
+def get_time_by_id(id_time):
+    result = get_seminar_times()
+
+    seminar = result[id_time-1]
     start_time, end_time = seminar['begin'], seminar['end']
 
     return start_time, end_time

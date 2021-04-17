@@ -1,6 +1,6 @@
 import json
 import datetime
-from schedule_api import get_group_seminars, get_time_by_id
+from schedule_api import get_group_seminars, get_time_by_id, get_seminar_times
 
 
 def write_data(user_id, field, value):
@@ -27,8 +27,10 @@ def read_data(user_id):
 
 def get_seminar_number(hour, minute):
     number = None
-    for lesson in range(1, 6):
-        start_time, end_time = get_time_by_id(lesson)
+    seminars = get_seminar_times()
+
+    for sem_id, seminar in enumerate(seminars):
+        start_time, end_time = seminar['begin'], seminar['end']
 
         h_start, m_start = int(start_time.split(':')[0]), int(start_time.split(':')[1])
         h_end, m_end = int(end_time.split(':')[0]), int(end_time.split(':')[1])
@@ -40,20 +42,27 @@ def get_seminar_number(hour, minute):
         current = datetime.datetime(2021, 1, 1, hour, minute)
 
         if (start < current) and (current < end):
-            number = lesson
+            number = sem_id + 1
             break
     
     return number
 
-def get_seminar_by_time(user_id, date):
-    user_group = read_data(user_id)['group']
+
+def preprocess_date(date):
     weekday = datetime.date.weekday(date) + 1
-    hour = date.hour + 7
+    hour = date.hour 
     minute = date.minute
 
     if hour % 24 < hour:
         hour %= 24
         weekday += 1
+
+    return weekday, hour, minute
+
+
+def get_seminar_number_by_time(user_id, date):
+    user_group = read_data(user_id)['group']
+    weekday, hour, minute = preprocess_date(date)
 
     _, schedule = get_group_seminars(user_group)
     seminar_number = get_seminar_number(hour, minute)

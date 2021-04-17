@@ -2,7 +2,7 @@ import json
 import logging
 from telegram import ReplyKeyboardMarkup, Update, ReplyKeyboardRemove
 from telegram.ext import Updater, CommandHandler, CallbackContext,MessageHandler, Filters, ConversationHandler
-from bot_functions import write_data, read_data, get_seminar_by_time
+from bot_functions import write_data, read_data, get_seminar_number_by_time
 from schedule_api import get_group_seminars, get_time_by_id
 
 
@@ -42,7 +42,7 @@ def add(update: Update, _: CallbackContext):
     file_id = update.message.photo[-1]['file_id']
  
     logger.info("Photo of %s: %s", user.first_name, file_id)
-    field = get_seminar_by_time(user_id, date)    
+    field = get_seminar_number_by_time(user_id, date)    
 
     if field != None:
         write_data(user_id, field, file_id)
