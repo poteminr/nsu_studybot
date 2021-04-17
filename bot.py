@@ -2,7 +2,7 @@ import json
 import logging
 from telegram import ReplyKeyboardMarkup, Update, ReplyKeyboardRemove
 from telegram.ext import Updater, CommandHandler, CallbackContext,MessageHandler, Filters, ConversationHandler
-from bot_functions import write_data, get_schedule, read_data, get_next_lesson_date
+from bot_functions import write_data, read_data, get_seminar_by_time
 from schedule_api import get_group_seminars, get_time_by_id
 
 
@@ -10,7 +10,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 logger = logging.getLogger(__name__)
 
-reply_keyboard = [['Просмотреть домашние задания']]
+reply_keyboard = [['Просмотреть домашние задания'], ['Добавить задание вручную']]
 
 SUBJECT = range(1)
 
@@ -39,25 +39,34 @@ def add(update: Update, _: CallbackContext):
     user = update.message.from_user
     user_id = user['id']
     date = update.message.date
-    
     file_id = update.message.photo[-1]['file_id']
  
     logger.info("Photo of %s: %s", user.first_name, file_id)
-    field, date = get_schedule(user_id, date)    
+    field = get_seminar_by_time(user_id, date)    
 
-    write_data(user_id, field, file_id)
+    if field != None:
+        write_data(user_id, field, file_id)
 
-    update.message.reply_text(f'Фотография "{field}" успешно загружена!')
+        update.message.reply_text(f'Фотография "{field}" успешно загружена!', 
+                                    reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False, resize_keyboard=True))
+    else:
+        update.message.reply_text(f'Занятия сейчас нет. Попробуйте добавить фото вручную!', 
+                                    reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False, resize_keyboard=True))
 
 
 def view(update: Update, context: CallbackContext):
     user = update.message.from_user
     user_id = user['id']
-    text = update.message.text
-    context.user_data['choice'] = text
+    user_group = read_data(user_id)['group']
 
-    subjects = list(read_data(user_id).keys())[1:]
-    keyboard = [subjects]
+    subjects, _ = get_group_seminars(user_group)
+    value = len(subjects)
+    
+    part_one = subjects[:int(value / 3)]
+    part_two = subjects[int(value / 3):int(value / 3) * 2]
+    part_three = subjects[int(value / 3) * 2:]
+
+    keyboard = [part_one, part_two, part_three]
 
     update.message.reply_text(f'Выберите необходимый предмет.', 
                               reply_markup=ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True))
@@ -71,14 +80,24 @@ def show(update: Update, _: CallbackContext):
     user_data = read_data(user_id)
 
     field = update.message.text
-    file_id = user_data[field]
-    next_lesson_date = get_next_lesson_date(user_id, field)
-
-    update.message.reply_photo(file_id, reply_markup=ReplyKeyboardRemove())
-    update.message.reply_text(f'Следующее занятие по {field}: {next_lesson_date} ', 
-                              reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True))
     
-    return ConversationHandler.END
+    if field in user_data.keys():
+
+        file_id = user_data[field]
+
+        # next_lesson_date = get_next_lesson_date(user_id, field)
+
+        update.message.reply_photo(file_id, reply_markup=ReplyKeyboardRemove())
+        update.message.reply_text(f'Удачи!', 
+                                reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True))
+        
+        return ConversationHandler.END
+    else:
+        update.message.reply_text(f'Данные отсутствуют.', 
+                                reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True))
+        
+        return ConversationHandler.END
+        
 
 
 def delete(update: Update, _: CallbackContext):

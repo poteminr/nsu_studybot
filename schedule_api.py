@@ -52,3 +52,10 @@ def get_time_by_id(id_time):
     start_time, end_time = seminar['begin'], seminar['end']
 
     return start_time, end_time
+
+
+def get_parity():
+    method_url = 'https://table.nsu.ru/api/parity'
+    result = requests.get(method_url, auth=HTTPBasicAuth(API_KEY, ''))
+
+    return result.json()['actual']
