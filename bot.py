@@ -19,7 +19,8 @@ def start(update: Update, _: CallbackContext):
     text_part_one = "Привет, это StudyBot, отправляй изображение домашней работы и мы составим личное расписние!\n"
     text_part_two =  "Введите номер группы '/group номер', чтобы начать работу!\n"
     text_part_three = "Для использованиях в чате группы добавляйте /add как подпись к фото!\n"
-    update.message.reply_text(text_part_one + text_part_two + text_part_three, 
+    text_part_four = "Для корректное работы в группе необходимы админ-права.\n"
+    update.message.reply_text(text_part_one + text_part_two + text_part_three + text_part_four, 
                               reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False, resize_keyboard=True))
 
 
@@ -59,6 +60,9 @@ def view(update: Update, context: CallbackContext):
     user_id = update.message.chat['id']
     user_group = read_data(user_id)['group']
 
+    context.user_data['command_to_view_mes_id'] = update.message['message_id']
+    context.user_data['command_to_view_chat_id'] = update.message.chat['id']
+
     subjects, _ = get_group_seminars(user_group)
     value = len(subjects)
     
@@ -68,13 +72,15 @@ def view(update: Update, context: CallbackContext):
 
     keyboard = [part_one, part_two, part_three]
 
-    update.message.reply_text(f'Выберите необходимый предмет.', 
+    sent_message = update.message.reply_text(f'Выберите необходимый предмет.', 
                               reply_markup=ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True))
+
+    context.user_data['bot_rep_to_view_mes_id'] = sent_message['message_id']
 
     return SUBJECT
 
 
-def show(update: Update, _: CallbackContext):
+def show(update: Update, context: CallbackContext):
     user = update.message.from_user
     user_id = update.message.chat['id']
     user_data = read_data(user_id)
@@ -85,26 +91,29 @@ def show(update: Update, _: CallbackContext):
 
         file_id = user_data[field]
 
-        # next_lesson_date = get_next_lesson_date(user_id, field)
-
         update.message.reply_photo(file_id, reply_markup=ReplyKeyboardRemove())
-        update.message.reply_text(f'Удачи!', 
+        update.message.reply_text(f'Удачи с "{field}"❤️!', 
                                 reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True))
-        
-        return ConversationHandler.END
+
     else:
-        update.message.reply_text(f'Данные отсутствуют.', 
+        update.message.reply_text(f'Данные "{field}" отсутствуют.', 
                                 reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True))
-        
-        return ConversationHandler.END
+
+    update.message.bot.delete_message(context.user_data['command_to_view_chat_id'], context.user_data['command_to_view_mes_id'])
+    update.message.bot.delete_message(context.user_data['command_to_view_chat_id'], context.user_data['bot_rep_to_view_mes_id'])
+
+    return ConversationHandler.END
 
 
 FIELD, ADDED = range(2)
 
-def add_by_hand(update: Update, _: CallbackContext):
+def add_by_hand(update: Update, context: CallbackContext):
     user = update.message.from_user
     user_id = update.message.chat['id']
     user_group = read_data(user_id)['group']
+
+    context.user_data['command_to_add_mes_id_1'] = update.message['message_id']
+    context.user_data['command_to_add_chat_id'] = update.message.chat['id']
 
     subjects, _ = get_group_seminars(user_group)
     value = len(subjects)
@@ -115,8 +124,10 @@ def add_by_hand(update: Update, _: CallbackContext):
 
     keyboard = [part_one, part_two, part_three]
 
-    update.message.reply_text(f'Выберите необходимый предмет.', 
+    sent_message = update.message.reply_text(f'Выберите необходимый предмет.', 
                               reply_markup=ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True))
+
+    context.user_data['reply_to_add_mes_id_1'] = sent_message['message_id']
 
     return FIELD
 
@@ -124,10 +135,14 @@ def add_by_hand(update: Update, _: CallbackContext):
 def pick_field_by_hand(update: Update, context: CallbackContext):
     user = update.message.from_user
     user_id = update.message.chat['id']
+
+    context.user_data['command_to_add_mes_id_2'] = update.message['message_id']
  
     field = update.message.text
     context.user_data['choice'] = field
-    update.message.reply_text(f'Отлично, теперь отправьте фотографию!')
+    sent_message = update.message.reply_text(f'Отлично, теперь отправьте фотографию! Не забудьте добавить /add, если бот в группе.')
+    
+    context.user_data['reply_to_add_mes_id_2'] = sent_message['message_id']
 
     return ADDED
 
@@ -147,6 +162,12 @@ def load_by_hand(update: Update, context: CallbackContext):
     update.message.reply_text(f'Фотография "{field}" успешно загружена!', 
                                 reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False, resize_keyboard=True))
     
+    update.message.bot.delete_message(context.user_data['command_to_add_chat_id'], context.user_data['command_to_add_mes_id_1'])
+    update.message.bot.delete_message(context.user_data['command_to_add_chat_id'], context.user_data['reply_to_add_mes_id_1'])
+
+    update.message.bot.delete_message(context.user_data['command_to_add_chat_id'], context.user_data['command_to_add_mes_id_2'])
+    update.message.bot.delete_message(context.user_data['command_to_add_chat_id'], context.user_data['reply_to_add_mes_id_2'])
+
     return ConversationHandler.END
 
 
