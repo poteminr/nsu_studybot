@@ -18,7 +18,7 @@ SUBJECT = range(1)
 def start(update: Update, _: CallbackContext):
     text_part_one = "Привет, это StudyBot, отправляй изображение домашней работы и мы составим личное расписние!\n"
     text_part_two =  "Введите номер группы '/group номер', чтобы начать работу!\n"
-    text_part_three = "Для использованиях в чате группы добавляйте /add как подпись к фото!\n"
+    text_part_three = "Добавляйте /add как подпись к фото!\n"
     text_part_four = "Для корректное работы в группе необходимы админ-права.\n"
     update.message.reply_text(text_part_one + text_part_two + text_part_three + text_part_four, 
                               reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False, resize_keyboard=True))
@@ -92,7 +92,7 @@ def show(update: Update, context: CallbackContext):
         file_id = user_data[field]
 
         update.message.reply_photo(file_id, reply_markup=ReplyKeyboardRemove())
-        update.message.reply_text(f'Удачи с "{field}"❤️!', 
+        update.message.reply_text(f'Удачи с "{field}" ❤️!', 
                                 reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True))
 
     else:
@@ -140,7 +140,7 @@ def pick_field_by_hand(update: Update, context: CallbackContext):
  
     field = update.message.text
     context.user_data['choice'] = field
-    sent_message = update.message.reply_text(f'Отлично, теперь отправьте фотографию! Не забудьте добавить /add, если бот в группе.')
+    sent_message = update.message.reply_text(f'Отправьте фотографию! Не забудьте добавить /add.')
     
     context.user_data['reply_to_add_mes_id_2'] = sent_message['message_id']
 
@@ -150,7 +150,6 @@ def pick_field_by_hand(update: Update, context: CallbackContext):
 def load_by_hand(update: Update, context: CallbackContext):
     user = update.message.from_user
     user_id = update.message.chat['id']
-    # date = update.message.date
     file_id = update.message.photo[-1]['file_id']
  
     logger.info("Photo of %s: %s", user.first_name, file_id)
@@ -211,13 +210,13 @@ def main():
         entry_points=[MessageHandler(Filters.regex('^Добавить задание вручную$'), add_by_hand)],
         states={
             FIELD: [MessageHandler(Filters.text & ~(Filters.command), pick_field_by_hand)],
-            ADDED: [MessageHandler(Filters.photo & ~(Filters.command), load_by_hand)]
+            ADDED: [MessageHandler(Filters.photo & Filters.caption('^/add$'), load_by_hand)]
             },
             fallbacks=[CommandHandler('cancel', cancel)]
             )
 
     dispatcher.add_handler(conv_handler_two)
-    dispatcher.add_handler(MessageHandler(Filters.photo, add))
+    dispatcher.add_handler(MessageHandler(Filters.photo & Filters.caption('^/add$'), add))
 
     updater.start_polling()
 
