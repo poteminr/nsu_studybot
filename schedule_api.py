@@ -3,7 +3,7 @@ import json
 from requests.auth import HTTPBasicAuth
 
 with open('keys.json') as f:
-        keys = json.load(f)
+    keys = json.load(f)
 
 API_KEY = keys['NSU_API']
 
@@ -24,30 +24,30 @@ def get_group_schedule(group_number):
     result = requests.get(method_url, auth=HTTPBasicAuth(API_KEY, ''))
 
     return result
-    
+
 
 def get_group_seminars(group_number):
     schedule = get_group_schedule(group_number).json()
-    
-    seminars_set = [] 
+
+    seminars_set = []
     seminars = {}
-    
+
     for lesson in schedule:
         if lesson['type'] in ['пр', 'лаб']:
             seminars_set.append(lesson['name'])
-            
+
             if lesson['weekday'] not in seminars.keys():
                 seminars[lesson['weekday']] = {}
-            
+
             seminars[lesson['weekday']][lesson['id_time']] = lesson['name']
-    
-    return list(set(seminars_set)), seminars 
+
+    return list(set(seminars_set)), seminars
 
 
 def get_seminar_times():
     method_url = 'https://table.nsu.ru/api/time'
     result = requests.get(method_url, auth=HTTPBasicAuth(API_KEY, ''))
-    
+
     return result.json()
 
 

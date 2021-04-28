@@ -6,10 +6,10 @@ from schedule_api import get_group_seminars, get_time_by_id, get_seminar_times
 def write_data(user_id, field, value):
     with open('data.json') as f:
         data = json.load(f)
-    
+
     if str(user_id) not in data.keys():
         data[user_id] = {}
-        data[user_id][field] = value 
+        data[user_id][field] = value
 
     else:
         data[str(user_id)][field] = value
@@ -35,7 +35,6 @@ def get_seminar_number(hour, minute):
         h_start, m_start = int(start_time.split(':')[0]), int(start_time.split(':')[1])
         h_end, m_end = int(end_time.split(':')[0]), int(end_time.split(':')[1])
 
-
         start = datetime.datetime(2021, 1, 1, h_start, m_start)
         end = datetime.datetime(2021, 1, 1, h_end, m_end) + datetime.timedelta(minutes=5)
 
@@ -44,7 +43,7 @@ def get_seminar_number(hour, minute):
         if (start < current) and (current < end):
             number = sem_id + 1
             break
-    
+
     return number
 
 
@@ -69,9 +68,8 @@ def get_seminar_number_by_time(user_id, date):
 
     current_subject = None
 
-    if weekday % 7 !=0:
+    if weekday % 7 != 0:
         if seminar_number in schedule[weekday].keys():
             current_subject = schedule[weekday][seminar_number]
 
     return current_subject
-    
