@@ -203,7 +203,7 @@ def main():
     with open('keys.json') as f:
         keys = json.load(f)
 
-    updater = Updater(token=keys['  token'], use_context=True)
+    updater = Updater(token=keys['token'], use_context=True)
 
     dispatcher = updater.dispatcher
 
