@@ -2,8 +2,8 @@ import json
 import logging
 from telegram import ReplyKeyboardMarkup, Update, ReplyKeyboardRemove
 from telegram.ext import Updater, CommandHandler, CallbackContext, MessageHandler, Filters, ConversationHandler
-from bot_functions import write_data, read_data, get_seminar_number_by_time
-from schedule_api import get_group_seminars, get_time_by_id, get_group_id
+from scripts.bot_functions import write_data, read_data, get_seminar_number_by_time
+from scripts.schedule_api import get_group_seminars, get_group_id
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
@@ -15,13 +15,26 @@ SUBJECT = range(1)
 
 
 def start(update: Update, _: CallbackContext):
-    text_part_one = "Привет, это StudyBot, отправляй изображение домашней работы и мы составим личное расписние!\n"
+    text_part_one = "Привет, это StudyBot, отправляй изображение домашней работы и мы составим личное расписание!\n"
     text_part_two = "Введите номер группы '/group номер', чтобы начать работу!\n"
     text_part_three = "Добавляйте /add как подпись к фото!\n"
     text_part_four = "Для корректное работы в группе необходимы админ-права.\n"
     update.message.reply_text(text_part_one + text_part_two + text_part_three + text_part_four,
                               reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False,
                                                                resize_keyboard=True))
+
+
+def restart(update: Update, _: CallbackContext):
+    user = update.message.from_user
+
+    logger.info("User %s canceled the conversation.", user.first_name)
+
+    text = "Бот перезагружен!"
+    update.message.reply_text(text,
+                              reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False,
+                                                               resize_keyboard=True))
+
+    return ConversationHandler.END
 
 
 def group(update: Update, _: CallbackContext):
@@ -189,16 +202,6 @@ def load_by_hand(update: Update, context: CallbackContext):
     return ConversationHandler.END
 
 
-def cancel(update: Update, _: CallbackContext):
-    user = update.message.from_user
-
-    logger.info("User %s canceled the conversation.", user.first_name)
-
-    update.message.reply_text('Пока', reply_markup=ReplyKeyboardRemove())
-
-    return ConversationHandler.END
-
-
 def main():
     with open('keys.json') as f:
         keys = json.load(f)
@@ -215,7 +218,7 @@ def main():
         states={
             SUBJECT: [MessageHandler(Filters.text & ~(Filters.command), show)]
         },
-        fallbacks=[CommandHandler('cancel', cancel)]
+        fallbacks=[CommandHandler('restart', restart)]
     )
 
     dispatcher.add_handler(conv_handler)
@@ -226,11 +229,12 @@ def main():
             FIELD: [MessageHandler(Filters.text & ~(Filters.command), pick_field_by_hand)],
             ADDED: [MessageHandler(Filters.photo & Filters.caption('^/add$'), load_by_hand)]
         },
-        fallbacks=[CommandHandler('cancel', cancel)]
+        fallbacks=[CommandHandler('restart', restart)]
     )
 
     dispatcher.add_handler(conv_handler_two)
     dispatcher.add_handler(MessageHandler(Filters.photo & Filters.caption('^/add$'), add))
+    dispatcher.add_handler(CommandHandler("restart", restart))
 
     updater.start_polling()
 

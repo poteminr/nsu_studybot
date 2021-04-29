@@ -2,7 +2,7 @@ import requests
 import json
 from requests.auth import HTTPBasicAuth
 
-with open('keys.json') as f:
+with open('./keys.json') as f:
     keys = json.load(f)
 
 API_KEY = keys['NSU_API']

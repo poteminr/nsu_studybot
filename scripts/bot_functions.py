@@ -1,10 +1,10 @@
 import json
 import datetime
-from schedule_api import get_group_seminars, get_time_by_id, get_seminar_times
+from scripts.schedule_api import get_group_seminars, get_time_by_id, get_seminar_times
 
 
 def write_data(user_id, field, value):
-    with open('data.json') as f:
+    with open('./data.json') as f:
         data = json.load(f)
 
     if str(user_id) not in data.keys():
@@ -14,12 +14,12 @@ def write_data(user_id, field, value):
     else:
         data[str(user_id)][field] = value
 
-    with open('data.json', 'w') as f:
+    with open('./data.json', 'w') as f:
         json.dump(data, f)
 
 
 def read_data(user_id):
-    with open('data.json') as f:
+    with open('./data.json') as f:
         data = json.load(f)
 
     return data[str(user_id)]
