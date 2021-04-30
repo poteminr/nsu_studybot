@@ -49,7 +49,7 @@ def group(update: Update, _: CallbackContext):
         write_data(user_id, 'group', user_group)
         update.message.reply_text(f"Группа {user_group}, отлично! Чтобы сменить, используйте команду заново.")
     except KeyError:
-        write_data(user_id, 'group', user_group)
+        write_data(user_id, 'group', 228)
         update.message.reply_text(f"Группа {user_group} не найдена, используйте команду еще раз.")
 
 
