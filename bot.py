@@ -1,5 +1,6 @@
 import json
 import logging
+import telegram.error
 from telegram import ReplyKeyboardMarkup, Update, ReplyKeyboardRemove
 from telegram.ext import Updater, CommandHandler, CallbackContext, MessageHandler, Filters, ConversationHandler
 from scripts.bot_functions import write_data, read_data, get_seminar_number_by_time
@@ -15,11 +16,13 @@ SUBJECT = range(1)
 
 
 def start(update: Update, _: CallbackContext):
-    text_part_one = "Привет, это StudyBot, отправляй изображение домашней работы и мы составим личное расписание!\n"
+    text_part_one = "Привет, это StudyBot, отправляй изображение или текст домашней работы!\n"
     text_part_two = "Введите номер группы '/group номер', чтобы начать работу!\n"
-    text_part_three = "Добавляйте /add как подпись к фото!\n"
+    text_part_three = "Добавляйте /add как подпись к фото или используйте вместе с текстом!\n"
     text_part_four = "Для корректное работы в группе необходимы админ-права.\n"
-    update.message.reply_text(text_part_one + text_part_two + text_part_three + text_part_four,
+
+    text = text_part_one + text_part_two + text_part_three + text_part_four
+    update.message.reply_text(text,
                               reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False,
                                                                resize_keyboard=True))
 
@@ -37,7 +40,7 @@ def restart(update: Update, _: CallbackContext):
     return ConversationHandler.END
 
 
-def group(update: Update, _: CallbackContext):
+def init_user_group(update: Update, _: CallbackContext):
     user = update.message.from_user
     user_id = update.message.chat['id']
     user_group = int(update.message.text.split(" ")[1])
@@ -57,24 +60,36 @@ def add(update: Update, _: CallbackContext):
     user = update.message.from_user
     user_id = update.message.chat['id']
     date = update.message.date
-    file_id = update.message.photo[-1]['file_id']
 
-    logger.info("Photo of %s: %s", user.first_name, file_id)
+    if len(update.message.photo) == 0:
+        is_photo = False
+        message = update.message.text.split("/add")[1].strip()
+    else:
+        is_photo = True
+        file_id = update.message.photo[-1]['file_id']
+
     field = get_seminar_number_by_time(user_id, date)
 
     if field is not None:
-        write_data(user_id, field, file_id)
+        if is_photo:
+            write_data(user_id, field, file_id)
 
-        update.message.reply_text(f'Фотография "{field}" успешно загружена!',
-                                  reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False,
-                                                                   resize_keyboard=True))
+            update.message.reply_text(f'Фотография "{field}" успешно загружена!',
+                                      reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False,
+                                                                       resize_keyboard=True))
+        else:
+            write_data(user_id, field, message)
+
+            update.message.reply_text(f'Текст "{field}" успешно загружен!',
+                                      reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False,
+                                                                       resize_keyboard=True))
     else:
-        update.message.reply_text(f'Занятия сейчас нет. Попробуйте добавить фото вручную!',
+        update.message.reply_text(f'Занятия сейчас нет. Попробуйте добавить вручную!',
                                   reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False,
                                                                    resize_keyboard=True))
 
 
-def view(update: Update, context: CallbackContext):
+def view_assigment(update: Update, context: CallbackContext):
     user = update.message.from_user
     user_id = update.message.chat['id']
     user_group = read_data(user_id)['group']
@@ -100,7 +115,7 @@ def view(update: Update, context: CallbackContext):
     return SUBJECT
 
 
-def show(update: Update, context: CallbackContext):
+def show_assigment(update: Update, context: CallbackContext):
     user = update.message.from_user
     user_id = update.message.chat['id']
     user_data = read_data(user_id)
@@ -108,13 +123,15 @@ def show(update: Update, context: CallbackContext):
     field = update.message.text
 
     if field in user_data.keys():
-
-        file_id = user_data[field]
-
-        update.message.reply_photo(file_id, reply_markup=ReplyKeyboardRemove())
-        update.message.reply_text(f'Удачи с "{field}" ❤️!',
-                                  reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True,
-                                                                   resize_keyboard=True))
+        data = user_data[field]
+        try:
+            update.message.reply_photo(data, reply_markup=ReplyKeyboardRemove())
+            update.message.reply_text(f'Удачи с "{field}" ❤️!',
+                                      reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True,
+                                                                       resize_keyboard=True))
+        except telegram.error.BadRequest:
+            update.message.reply_text(data, reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True,
+                                                                             resize_keyboard=True))
 
     else:
         update.message.reply_text(f'Данные "{field}" отсутствуют.',
@@ -167,7 +184,7 @@ def pick_field_by_hand(update: Update, context: CallbackContext):
 
     field = update.message.text
     context.user_data['choice'] = field
-    sent_message = update.message.reply_text(f'Отправьте фотографию! Не забудьте добавить /add.')
+    sent_message = update.message.reply_text(f'Отправьте фотографию или текст! Не забудьте добавить /add.')
 
     context.user_data['reply_to_add_mes_id_2'] = sent_message['message_id']
 
@@ -177,17 +194,28 @@ def pick_field_by_hand(update: Update, context: CallbackContext):
 def load_by_hand(update: Update, context: CallbackContext):
     user = update.message.from_user
     user_id = update.message.chat['id']
-    file_id = update.message.photo[-1]['file_id']
 
-    logger.info("Photo of %s: %s", user.first_name, file_id)
+    if len(update.message.photo) == 0:
+        is_photo = False
+        message = update.message.text.split("/add")[1].strip()
+    else:
+        is_photo = True
+        file_id = update.message.photo[-1]['file_id']
 
     field = context.user_data['choice']
 
-    write_data(user_id, field, file_id)
+    if is_photo:
+        write_data(user_id, field, file_id)
 
-    update.message.reply_text(f'Фотография "{field}" успешно загружена!',
-                              reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False,
-                                                               resize_keyboard=True))
+        update.message.reply_text(f'Фотография "{field}" успешно загружена!',
+                                  reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False,
+                                                                   resize_keyboard=True))
+    else:
+        write_data(user_id, field, message)
+
+        update.message.reply_text(f'Текст "{field}" успешно загружен!',
+                                  reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False,
+                                                                   resize_keyboard=True))
 
     update.message.bot.delete_message(context.user_data['command_to_add_chat_id'],
                                       context.user_data['command_to_add_mes_id_1'])
@@ -206,17 +234,17 @@ def main():
     with open('keys.json') as f:
         keys = json.load(f)
 
-    updater = Updater(token=keys['token'], use_context=True)
+    updater = Updater(token=keys['test_token'], use_context=True)
 
     dispatcher = updater.dispatcher
 
     dispatcher.add_handler(CommandHandler("start", start))
-    dispatcher.add_handler(CommandHandler("group", group))
+    dispatcher.add_handler(CommandHandler("group", init_user_group))
 
     conv_handler = ConversationHandler(
-        entry_points=[MessageHandler(Filters.regex('^Просмотреть домашние задания$'), view)],
+        entry_points=[MessageHandler(Filters.regex('^Просмотреть домашние задания$'), view_assigment)],
         states={
-            SUBJECT: [MessageHandler(Filters.text & ~(Filters.command), show)]
+            SUBJECT: [MessageHandler(Filters.text & ~(Filters.command), show_assigment)]
         },
         fallbacks=[CommandHandler('restart', restart)]
     )
@@ -227,13 +255,16 @@ def main():
         entry_points=[MessageHandler(Filters.regex('^Добавить задание вручную$'), add_by_hand)],
         states={
             FIELD: [MessageHandler(Filters.text & ~(Filters.command), pick_field_by_hand)],
-            ADDED: [MessageHandler(Filters.photo & Filters.caption('^/add$'), load_by_hand)]
+            ADDED: [MessageHandler(Filters.photo & Filters.caption('^/add$'), load_by_hand),
+                    CommandHandler("add", load_by_hand)
+                    ]
         },
         fallbacks=[CommandHandler('restart', restart)]
     )
 
     dispatcher.add_handler(conv_handler_two)
     dispatcher.add_handler(MessageHandler(Filters.photo & Filters.caption('^/add$'), add))
+    dispatcher.add_handler(CommandHandler("add", add))
     dispatcher.add_handler(CommandHandler("restart", restart))
 
     updater.start_polling()
