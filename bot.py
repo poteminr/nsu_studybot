@@ -256,8 +256,7 @@ def main():
         states={
             FIELD: [MessageHandler(Filters.text & ~(Filters.command), pick_field_by_hand)],
             ADDED: [MessageHandler(Filters.photo & Filters.caption('^/add$'), load_by_hand),
-                    CommandHandler("add", load_by_hand)
-                    ]
+                    CommandHandler("add", load_by_hand)]
         },
         fallbacks=[CommandHandler('restart', restart)]
     )
