@@ -1,4 +1,5 @@
 import json
+import datetime, pytz
 import logging
 import telegram.error
 from telegram import ReplyKeyboardMarkup, Update, ReplyKeyboardRemove
@@ -230,11 +231,34 @@ def load_by_hand(update: Update, context: CallbackContext):
     return ConversationHandler.END
 
 
+def send_user_data(update: Update, context: CallbackContext):
+    owner_id = -445717352
+    password = update.message.text.split(" ")[1]
+
+    with open('keys.json') as f:
+        keys = json.load(f)
+
+    if keys['backup_password'] == password:
+        data = open('./data.json', 'rb')
+        filename = datetime.datetime.now().strftime('%Y-%m-%d %H-%M-%S') + ".json"
+
+        update.message.bot.sendDocument(chat_id=owner_id, document=data, filename=filename)
+
+
+def backup_every_day(context: CallbackContext):
+    print("data")
+    owner_id = -445717352
+    data = open('./data.json', 'rb')
+    filename = datetime.datetime.now().strftime('%Y-%m-%d %H-%M-%S') + ".json"
+
+    context.bot.sendDocument(chat_id=owner_id, document=data, filename=filename)
+
+
 def main():
     with open('keys.json') as f:
         keys = json.load(f)
 
-    updater = Updater(token=keys['token'], use_context=True)
+    updater = Updater(token=keys['test_token'], use_context=True)
 
     dispatcher = updater.dispatcher
 
@@ -265,6 +289,9 @@ def main():
     dispatcher.add_handler(MessageHandler(Filters.photo & Filters.caption('^/add$'), add))
     dispatcher.add_handler(CommandHandler("add", add))
     dispatcher.add_handler(CommandHandler("restart", restart))
+    dispatcher.add_handler(CommandHandler("backup", send_user_data))
+
+    updater.job_queue.run_daily(backup_every_day, time=datetime.time(23, 00, 00, tzinfo=pytz.timezone('Asia/Novosibirsk')))
 
     updater.start_polling()
 
