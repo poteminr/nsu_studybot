@@ -22,7 +22,8 @@ def read_data(user_id):
     with open('./data.json') as f:
         data = json.load(f)
 
-    return data[str(user_id)]
+        if str(user_id) in data.keys():
+            return data[str(user_id)]
 
 
 def get_seminar_number(hour, minute):

@@ -17,15 +17,15 @@ SUBJECT = range(1)
 
 
 def start(update: Update, _: CallbackContext):
-    text_part_one = "Привет, это StudyBot, отправляй изображение или текст домашней работы!\n"
-    text_part_two = "Введите номер группы '/group номер', чтобы начать работу!\n"
-    text_part_three = "Добавляйте /add как подпись к фото или используйте вместе с текстом!\n"
-    text_part_four = "Для корректное работы в группе необходимы админ-права.\n"
+    text_part_one = "Привет, это StudyBot, отправляй изображение или текст домашней работы!\n\n"
+    text_part_two = "Для начала добавьте номер своей группы.\n"
+    text_part_three = "Для корректное работы в группе необходимы админ-права.\n"
 
-    text = text_part_one + text_part_two + text_part_three + text_part_four
+    text = text_part_one + text_part_two + text_part_three
     update.message.reply_text(text,
                               reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False,
                                                                resize_keyboard=True))
+    update.message.reply_photo(photo=open("./studybot_info.png", 'rb'))
 
 
 def restart(update: Update, _: CallbackContext):
@@ -62,30 +62,38 @@ def add(update: Update, _: CallbackContext):
     user_id = update.message.chat['id']
     date = update.message.date
 
-    if len(update.message.photo) == 0:
-        is_photo = False
-        message = update.message.text.split("/add")[1].strip()
-    else:
-        is_photo = True
-        file_id = update.message.photo[-1]['file_id']
+    user_group = read_data(user_id)
 
-    field = get_seminar_number_by_time(user_id, date)
-
-    if field is not None:
-        if is_photo:
-            write_data(user_id, field, file_id)
-
-            update.message.reply_text(f'Фотография "{field}" успешно загружена!',
-                                      reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False,
-                                                                       resize_keyboard=True))
+    if user_group is not None:
+        if len(update.message.photo) == 0:
+            is_photo = False
+            message = update.message.text.split("/add")[1].strip()
         else:
-            write_data(user_id, field, message)
+            is_photo = True
+            file_id = update.message.photo[-1]['file_id']
 
-            update.message.reply_text(f'Текст "{field}" успешно загружен!',
+        field = get_seminar_number_by_time(user_id, date)
+
+        if field is not None:
+            if is_photo:
+                write_data(user_id, field, file_id)
+
+                update.message.reply_text(f'Фотография "{field}" успешно загружена!',
+                                          reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False,
+                                                                           resize_keyboard=True))
+            else:
+                write_data(user_id, field, message)
+
+                update.message.reply_text(f'Текст "{field}" успешно загружен!',
+                                          reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False,
+                                                                           resize_keyboard=True))
+        else:
+            update.message.reply_text(f'Занятия сейчас нет. Попробуйте добавить вручную!',
                                       reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False,
                                                                        resize_keyboard=True))
+
     else:
-        update.message.reply_text(f'Занятия сейчас нет. Попробуйте добавить вручную!',
+        update.message.reply_text(f'Необходимо ввести номер группы. (/group номер)',
                                   reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False,
                                                                    resize_keyboard=True))
 
@@ -93,27 +101,34 @@ def add(update: Update, _: CallbackContext):
 def view_assigment(update: Update, context: CallbackContext):
     user = update.message.from_user
     user_id = update.message.chat['id']
-    user_group = read_data(user_id)['group']
+    user_group = read_data(user_id)
 
-    context.user_data['command_to_view_mes_id'] = update.message['message_id']
-    context.user_data['command_to_view_chat_id'] = update.message.chat['id']
+    if user_group is not None:
 
-    subjects, _ = get_group_seminars(user_group)
-    value = len(subjects)
+        context.user_data['command_to_view_mes_id'] = update.message['message_id']
+        context.user_data['command_to_view_chat_id'] = update.message.chat['id']
 
-    part_one = subjects[:int(value / 3)]
-    part_two = subjects[int(value / 3):int(value / 3) * 2]
-    part_three = subjects[int(value / 3) * 2:]
+        subjects, _ = get_group_seminars(user_group['group'])
+        value = len(subjects)
 
-    keyboard = [part_one, part_two, part_three]
+        part_one = subjects[:int(value / 3)]
+        part_two = subjects[int(value / 3):int(value / 3) * 2]
+        part_three = subjects[int(value / 3) * 2:]
 
-    sent_message = update.message.reply_text(f'Выберите необходимый предмет.',
-                                             reply_markup=ReplyKeyboardMarkup(keyboard, one_time_keyboard=True,
-                                                                              resize_keyboard=True))
+        keyboard = [part_one, part_two, part_three]
 
-    context.user_data['bot_rep_to_view_mes_id'] = sent_message['message_id']
+        sent_message = update.message.reply_text(f'Выберите необходимый предмет.',
+                                                 reply_markup=ReplyKeyboardMarkup(keyboard, one_time_keyboard=True,
+                                                                                  resize_keyboard=True))
 
-    return SUBJECT
+        context.user_data['bot_rep_to_view_mes_id'] = sent_message['message_id']
+
+        return SUBJECT
+
+    else:
+        update.message.reply_text(f'Необходимо ввести номер группы. (/group номер)',
+                                  reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False,
+                                                                   resize_keyboard=True))
 
 
 def show_assigment(update: Update, context: CallbackContext):
@@ -154,27 +169,33 @@ FIELD, ADDED = range(2)
 def add_by_hand(update: Update, context: CallbackContext):
     user = update.message.from_user
     user_id = update.message.chat['id']
-    user_group = read_data(user_id)['group']
+    user_group = read_data(user_id)
 
-    context.user_data['command_to_add_mes_id_1'] = update.message['message_id']
-    context.user_data['command_to_add_chat_id'] = update.message.chat['id']
+    if user_group is not None:
+        context.user_data['command_to_add_mes_id_1'] = update.message['message_id']
+        context.user_data['command_to_add_chat_id'] = update.message.chat['id']
 
-    subjects, _ = get_group_seminars(user_group)
-    value = len(subjects)
+        subjects, _ = get_group_seminars(user_group['group'])
+        value = len(subjects)
 
-    part_one = subjects[:int(value / 3)]
-    part_two = subjects[int(value / 3):int(value / 3) * 2]
-    part_three = subjects[int(value / 3) * 2:]
+        part_one = subjects[:int(value / 3)]
+        part_two = subjects[int(value / 3):int(value / 3) * 2]
+        part_three = subjects[int(value / 3) * 2:]
 
-    keyboard = [part_one, part_two, part_three]
+        keyboard = [part_one, part_two, part_three]
 
-    sent_message = update.message.reply_text(f'Выберите необходимый предмет.',
-                                             reply_markup=ReplyKeyboardMarkup(keyboard, one_time_keyboard=True,
-                                                                              resize_keyboard=True))
+        sent_message = update.message.reply_text(f'Выберите необходимый предмет.',
+                                                 reply_markup=ReplyKeyboardMarkup(keyboard, one_time_keyboard=True,
+                                                                                  resize_keyboard=True))
 
-    context.user_data['reply_to_add_mes_id_1'] = sent_message['message_id']
+        context.user_data['reply_to_add_mes_id_1'] = sent_message['message_id']
 
-    return FIELD
+        return FIELD
+
+    else:
+        update.message.reply_text(f'Необходимо ввести номер группы. (/group номер)',
+                                  reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False,
+                                                                   resize_keyboard=True))
 
 
 def pick_field_by_hand(update: Update, context: CallbackContext):
@@ -231,7 +252,7 @@ def load_by_hand(update: Update, context: CallbackContext):
     return ConversationHandler.END
 
 
-def send_user_data(update: Update, context: CallbackContext):
+def send_user_data(update: Update, _: CallbackContext):
     owner_id = -445717352
     password = update.message.text.split(" ")[1]
 
