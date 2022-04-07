@@ -1,4 +1,4 @@
-# StudyBot for NSU studentds 
+# StudyBot for NSU students 
 
 <p align="center">
 <img src="https://i.ibb.co/SNgYqwJ/Group-1.png" align="middle" alt="alt text" width="100"/>
