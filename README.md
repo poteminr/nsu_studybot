@@ -10,8 +10,3 @@
 <p align="center">
 <img src="https://i.ibb.co/bRSxRPc/studybot-info.png" align="middle" alt="alt text" width="600"/>
 </p>
-
-
-### [Available in telegram](https://t.me/nsu_studybot)
-
-
