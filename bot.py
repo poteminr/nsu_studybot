@@ -1,31 +1,120 @@
-import json
-import datetime, pytz
+from scripts.bot_functions import write_data, read_data, get_seminar_number_by_time, university_codes2text, \
+    university_codes2city
+from scripts.schedule_api import get_group_seminars, get_group_id
+from scripts.private_keys import import_private_keys
 import logging
 import telegram.error
-from telegram import ReplyKeyboardMarkup, Update, ReplyKeyboardRemove
-from telegram.ext import Updater, CommandHandler, CallbackContext, MessageHandler, Filters, ConversationHandler
-from scripts.bot_functions import write_data, read_data, get_seminar_number_by_time
-from scripts.schedule_api import get_group_seminars, get_group_id
+from telegram import ReplyKeyboardMarkup, Update, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import (
+    Updater,
+    CommandHandler,
+    CallbackContext,
+    MessageHandler, Filters,
+    ConversationHandler,
+    CallbackQueryHandler
+)
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
-
 logger = logging.getLogger(__name__)
+
+SUBJECT = range(1)
+FIRST, SECOND = range(2)
 
 reply_keyboard = [['Просмотреть домашние задания'], ['Добавить задание вручную']]
 
-SUBJECT = range(1)
+
+def start(update: Update, context: CallbackContext) -> int:
+    user = update.message.from_user
+    logger.info("User %s started the conversation.", user.first_name)
+
+    update.message.reply_photo(photo=open("./studybot_info.png", 'rb'), reply_markup=ReplyKeyboardRemove())
+
+    keyboard = [
+        [InlineKeyboardButton("Новосибирск", callback_data=str(1))],
+
+        [InlineKeyboardButton("Москва", callback_data=str(2))],
+    ]
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    update.message.reply_text("Выберите свой город 🏢", reply_markup=reply_markup)
+
+    return FIRST
 
 
-def start(update: Update, _: CallbackContext):
-    text_part_one = "Привет, это StudyBot, отправляй изображение или текст домашней работы!\n\n"
-    text_part_two = "Для начала добавьте номер своей группы.\n"
-    text_part_three = "Для корректное работы в группе необходимы админ-права.\n"
+def start_over(update: Update, context: CallbackContext) -> int:
+    query = update.callback_query
+    query.answer()
 
-    text = text_part_one + text_part_two + text_part_three
-    update.message.reply_text(text,
-                              reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False,
-                                                               resize_keyboard=True))
-    update.message.reply_photo(photo=open("./studybot_info.png", 'rb'))
+    keyboard = [
+        [InlineKeyboardButton("Новосибирск", callback_data=str(1))],
+        [InlineKeyboardButton("Москва", callback_data=str(2))],
+    ]
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    query.edit_message_text(text="Выберите свой город 🏢", reply_markup=reply_markup)
+
+    return FIRST
+
+
+def choose_university_nsk(update: Update, context: CallbackContext):
+    query = update.callback_query
+    query.answer()
+
+    keyboard = [
+        [InlineKeyboardButton("НГУ", callback_data=str(1.1))],
+        [InlineKeyboardButton("НГТУ", callback_data=str(1.2))],
+    ]
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    query.edit_message_text(text="Выберите свой университет 🧑🏻‍🎓", reply_markup=reply_markup)
+
+    return FIRST
+
+
+def choose_university_msk(update: Update, context: CallbackContext) -> int:
+    query = update.callback_query
+    query.answer()
+
+    keyboard = [
+        [InlineKeyboardButton("МГУ", callback_data=str(2.1))],
+        [InlineKeyboardButton("МГТУ", callback_data=str(2.2))],
+    ]
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    query.edit_message_text(text="Выберите свой университет 🧑🏻‍🎓", reply_markup=reply_markup)
+
+    return FIRST
+
+
+def confirm_choice_of_university(update: Update, context: CallbackContext):
+    query = update.callback_query
+    query.answer()
+
+    user_id = query.message.chat.id
+    write_data(user_id, 'university_code', query.data)
+    write_data(user_id, 'city', university_codes2city(query.data))
+
+    keyboard = [
+        [
+            InlineKeyboardButton("Выбрать еще раз", callback_data=str(ONE)),
+            InlineKeyboardButton("Подтвердить", callback_data=str(TWO)),
+        ]
+    ]
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    query.edit_message_text(text=f"Вы выбрали {university_codes2text(query.data)}. Всё верно?",
+                            reply_markup=reply_markup)
+
+    return SECOND
+
+
+def university_selection_end(update: Update, context: CallbackContext):
+    query = update.callback_query
+    query.answer()
+
+    query.edit_message_text(text="Университет выбран! \nТеперь используйте '/group номер вашей группы'")
+
+    return ConversationHandler.END
 
 
 def restart(update: Update, _: CallbackContext):
@@ -33,10 +122,7 @@ def restart(update: Update, _: CallbackContext):
 
     logger.info("User %s canceled the conversation.", user.first_name)
 
-    text = "Бот перезагружен!"
-    update.message.reply_text(text,
-                              reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False,
-                                                               resize_keyboard=True))
+    update.message.reply_text(text="Бот перезагружен!")
 
     return ConversationHandler.END
 
@@ -51,18 +137,23 @@ def init_user_group(update: Update, _: CallbackContext):
     try:
         get_group_id(user_group)
         write_data(user_id, 'group', user_group)
-        update.message.reply_text(f"Группа {user_group}, отлично! Чтобы сменить, используйте команду заново.")
+
+        text = f"Группа {user_group}, отлично! Чтобы сменить, используйте команду заново."
+        update.message.reply_text(text, reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False,
+                                                                         resize_keyboard=True))
     except KeyError:
-        write_data(user_id, 'group', 228)
-        update.message.reply_text(f"Группа {user_group} не найдена, используйте команду еще раз.")
+        write_data(user_id, 'group', -1)
+        update.message.reply_text(f"Группа {user_group} не найдена, используйте команду еще раз.", )
 
 
+# TODO: Refactor and optimize this function
 def add(update: Update, _: CallbackContext):
     user = update.message.from_user
     user_id = update.message.chat['id']
     date = update.message.date
 
     user_group = read_data(user_id)
+    reply_murkup_keyboard = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False, resize_keyboard=True)
 
     if user_group is not None:
         if len(update.message.photo) == 0:
@@ -79,23 +170,19 @@ def add(update: Update, _: CallbackContext):
                 write_data(user_id, field, file_id)
 
                 update.message.reply_text(f'Фотография "{field}" успешно загружена!',
-                                          reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False,
-                                                                           resize_keyboard=True))
+                                          reply_markup=reply_murkup_keyboard)
             else:
                 write_data(user_id, field, message)
 
                 update.message.reply_text(f'Текст "{field}" успешно загружен!',
-                                          reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False,
-                                                                           resize_keyboard=True))
+                                          reply_markup=reply_murkup_keyboard)
         else:
             update.message.reply_text(f'Занятия сейчас нет. Попробуйте добавить вручную!',
-                                      reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False,
-                                                                       resize_keyboard=True))
+                                      reply_markup=reply_murkup_keyboard)
 
     else:
         update.message.reply_text(f'Необходимо ввести номер группы. (/group номер)',
-                                  reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False,
-                                                                   resize_keyboard=True))
+                                  reply_markup=reply_murkup_keyboard)
 
 
 def view_assigment(update: Update, context: CallbackContext):
@@ -105,23 +192,17 @@ def view_assigment(update: Update, context: CallbackContext):
 
     if user_group is not None:
 
-        context.user_data['command_to_view_mes_id'] = update.message['message_id']
+        context.user_data['command_to_view_message_id'] = update.message['message_id']
         context.user_data['command_to_view_chat_id'] = update.message.chat['id']
 
         subjects, _ = get_group_seminars(user_group['group'])
-        value = len(subjects)
+        subjects = sorted(subjects)
 
-        part_one = subjects[:int(value / 3)]
-        part_two = subjects[int(value / 3):int(value / 3) * 2]
-        part_three = subjects[int(value / 3) * 2:]
+        keyboard = [[InlineKeyboardButton(seminar_name, callback_data=str(ind))] for ind, seminar_name in enumerate(subjects)]
 
-        keyboard = [part_one, part_two, part_three]
+        reply_markup = InlineKeyboardMarkup(keyboard)
 
-        sent_message = update.message.reply_text(f'Выберите необходимый предмет.',
-                                                 reply_markup=ReplyKeyboardMarkup(keyboard, one_time_keyboard=True,
-                                                                                  resize_keyboard=True))
-
-        context.user_data['bot_rep_to_view_mes_id'] = sent_message['message_id']
+        update.message.reply_text("Выберите необходимый предмет", reply_markup=reply_markup)
 
         return SUBJECT
 
@@ -131,34 +212,30 @@ def view_assigment(update: Update, context: CallbackContext):
                                                                    resize_keyboard=True))
 
 
-def show_assigment(update: Update, context: CallbackContext):
-    user = update.message.from_user
-    user_id = update.message.chat['id']
+def send_assigment_to_user(update: Update, context: CallbackContext):
+    query = update.callback_query
+    query.answer()
+    user_id = query.message.chat.id
+
     user_data = read_data(user_id)
 
-    field = update.message.text
+    field_index = query.data
+    field_text = query.message.reply_markup.inline_keyboard[int(field_index)][0]['text']
 
-    if field in user_data.keys():
-        data = user_data[field]
+    if field_text in user_data.keys():
+        data = user_data[field_text]
         try:
-            update.message.reply_photo(data, reply_markup=ReplyKeyboardRemove())
-            update.message.reply_text(f'Удачи с "{field}" ❤️!',
-                                      reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True,
-                                                                       resize_keyboard=True))
+            update.callback_query.message.reply_photo(data, caption=f"{field_text}")
+            query.delete_message()
+
         except telegram.error.BadRequest:
-            update.message.reply_text(data, reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True,
-                                                                             resize_keyboard=True))
+            query.edit_message_text(text=f"{field_text}: \n{data}")
 
     else:
-        update.message.reply_text(f'Данные "{field}" отсутствуют.',
-                                  reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True,
-                                                                   resize_keyboard=True))
+        query.edit_message_text(text=f'Данные по предмету: \n"{field_text}" \nотсутствуют.')
 
-    update.message.bot.delete_message(context.user_data['command_to_view_chat_id'],
-                                      context.user_data['command_to_view_mes_id'])
-
-    update.message.bot.delete_message(context.user_data['command_to_view_chat_id'],
-                                      context.user_data['bot_rep_to_view_mes_id'])
+    update.callback_query.message.bot.delete_message(context.user_data['command_to_view_chat_id'],
+                                                     context.user_data['command_to_view_message_id'])
 
     return ConversationHandler.END
 
@@ -252,49 +329,48 @@ def load_by_hand(update: Update, context: CallbackContext):
     return ConversationHandler.END
 
 
-def send_user_data(update: Update, _: CallbackContext):
-    owner_id = -445717352
-    password = update.message.text.split(" ")[1]
-
-    with open('keys.json') as f:
-        keys = json.load(f)
-
-    if keys['backup_password'] == password:
-        data = open('./data.json', 'rb')
-        filename = datetime.datetime.now().strftime('%Y-%m-%d %H-%M-%S') + ".json"
-
-        update.message.bot.sendDocument(chat_id=owner_id, document=data, filename=filename)
-
-
-def backup_every_day(context: CallbackContext):
-    print("data")
-    owner_id = -445717352
-    data = open('./data.json', 'rb')
-    filename = datetime.datetime.now().strftime('%Y-%m-%d %H-%M-%S') + ".json"
-
-    context.bot.sendDocument(chat_id=owner_id, document=data, filename=filename)
-
-
 def main():
-    with open('keys.json') as f:
-        keys = json.load(f)
+    API_KEY = import_private_keys(json_path='keys.json', key_name='token')
 
-    updater = Updater(token=keys['token'], use_context=True)
+    updater = Updater(token=API_KEY, use_context=True)
 
     dispatcher = updater.dispatcher
 
-    dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(CommandHandler("group", init_user_group))
 
-    conv_handler = ConversationHandler(
-        entry_points=[MessageHandler(Filters.regex('^Просмотреть домашние задания$'), view_assigment)],
+    conv_handler_pick_university = ConversationHandler(
+        entry_points=[CommandHandler('start', start)],
         states={
-            SUBJECT: [MessageHandler(Filters.text & ~(Filters.command), show_assigment)]
+            FIRST: [
+                CallbackQueryHandler(choose_university_nsk, pattern='^' + str(1) + '$'),
+                CallbackQueryHandler(choose_university_msk, pattern='^' + str(2) + '$'),
+                CallbackQueryHandler(confirm_choice_of_university, pattern='^' + str(1.1) + '$'),
+                CallbackQueryHandler(confirm_choice_of_university, pattern='^' + str(1.2) + '$'),
+                CallbackQueryHandler(confirm_choice_of_university, pattern='^' + str(2.1) + '$'),
+                CallbackQueryHandler(confirm_choice_of_university, pattern='^' + str(2.2) + '$'),
+            ],
+            SECOND: [
+                CallbackQueryHandler(start_over, pattern='^' + str(1) + '$'),
+                CallbackQueryHandler(university_selection_end, pattern='^' + str(2) + '$'),
+            ],
         },
-        fallbacks=[CommandHandler('restart', restart)]
+        fallbacks=[CommandHandler('start', start)],
     )
 
-    dispatcher.add_handler(conv_handler)
+    dispatcher.add_handler(conv_handler_pick_university)
+
+    conv_handler_view_assigment = ConversationHandler(
+        entry_points=[MessageHandler(Filters.regex('^Просмотреть домашние задания$'), view_assigment)],
+        states={
+            SUBJECT: [
+                CallbackQueryHandler(send_assigment_to_user),
+            ],
+
+        },
+        fallbacks=[CommandHandler('start', start)],
+    )
+
+    dispatcher.add_handler(conv_handler_view_assigment)
 
     conv_handler_two = ConversationHandler(
         entry_points=[MessageHandler(Filters.regex('^Добавить задание вручную$'), add_by_hand)],
@@ -310,9 +386,6 @@ def main():
     dispatcher.add_handler(MessageHandler(Filters.photo & Filters.caption('^/add$'), add))
     dispatcher.add_handler(CommandHandler("add", add))
     dispatcher.add_handler(CommandHandler("restart", restart))
-    dispatcher.add_handler(CommandHandler("backup", send_user_data))
-
-    updater.job_queue.run_daily(backup_every_day, time=datetime.time(23, 00, 00, tzinfo=pytz.timezone('Asia/Novosibirsk')))
 
     updater.start_polling()
 

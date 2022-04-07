@@ -1,9 +1,10 @@
 import json
 import datetime
-from scripts.schedule_api import get_group_seminars, get_time_by_id, get_seminar_times
+from typing import Tuple, Optional
+from scripts.schedule_api import get_group_seminars, get_seminar_number
 
 
-def write_data(user_id, field, value):
+def write_data(user_id: int, field: str, value: Optional):
     with open('./data.json') as f:
         data = json.load(f)
 
@@ -18,7 +19,7 @@ def write_data(user_id, field, value):
         json.dump(data, f)
 
 
-def read_data(user_id):
+def read_data(user_id: int):
     with open('./data.json') as f:
         data = json.load(f)
 
@@ -26,29 +27,7 @@ def read_data(user_id):
             return data[str(user_id)]
 
 
-def get_seminar_number(hour, minute):
-    number = None
-    seminars = get_seminar_times()
-
-    for sem_id, seminar in enumerate(seminars):
-        start_time, end_time = seminar['begin'], seminar['end']
-
-        h_start, m_start = int(start_time.split(':')[0]), int(start_time.split(':')[1])
-        h_end, m_end = int(end_time.split(':')[0]), int(end_time.split(':')[1])
-
-        start = datetime.datetime(2021, 1, 1, h_start, m_start)
-        end = datetime.datetime(2021, 1, 1, h_end, m_end) + datetime.timedelta(minutes=5)
-
-        current = datetime.datetime(2021, 1, 1, hour, minute)
-
-        if (start < current) and (current < end):
-            number = sem_id + 1
-            break
-
-    return number
-
-
-def preprocess_date(date):
+def preprocess_date(date: datetime.datetime) -> Tuple[int, int, int]:
     weekday = datetime.date.weekday(date) + 1
     hour = date.hour + 7
     minute = date.minute
@@ -60,7 +39,7 @@ def preprocess_date(date):
     return weekday, hour, minute
 
 
-def get_seminar_number_by_time(user_id, date):
+def get_seminar_number_by_time(user_id: int, date: datetime.datetime) -> str:
     user_group = read_data(user_id)['group']
     weekday, hour, minute = preprocess_date(date)
 
@@ -74,3 +53,16 @@ def get_seminar_number_by_time(user_id, date):
             current_subject = schedule[weekday][seminar_number]
 
     return current_subject
+
+
+def university_codes2text(code: str):
+    university_codes = {"1.1": "НГУ", '1.2': "НГТУ",
+                        "2.1": "МГУ", "2.2": "МГТУ"}
+
+    return university_codes[code]
+
+
+def university_codes2city(code: str):
+    city_codes = {"1": "Новосибирск", "2": "Москва"}
+
+    return city_codes[code.split(".")[0]]
