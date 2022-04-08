@@ -35,7 +35,6 @@ def start(update: Update, context: CallbackContext) -> int:
         [InlineKeyboardButton("Москва", callback_data=str(2))],
     ]
 
-
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.message.reply_text("Выберите свой город 🏢", reply_markup=reply_markup)
 
