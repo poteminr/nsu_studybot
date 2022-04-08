@@ -96,8 +96,8 @@ def confirm_choice_of_university(update: Update, context: CallbackContext):
 
     keyboard = [
         [
-            InlineKeyboardButton("Выбрать еще раз", callback_data=str(ONE)),
-            InlineKeyboardButton("Подтвердить", callback_data=str(TWO)),
+            InlineKeyboardButton("Выбрать еще раз", callback_data=str(1)),
+            InlineKeyboardButton("Подтвердить", callback_data=str(2)),
         ]
     ]
 
@@ -198,8 +198,8 @@ def view_assigment(update: Update, context: CallbackContext):
         subjects, _ = get_group_seminars(user_group['group'])
         subjects = sorted(subjects)
 
-        keyboard = [[InlineKeyboardButton(seminar_name, callback_data=str(ind))] for ind, seminar_name in enumerate(subjects)]
-
+        keyboard = [[InlineKeyboardButton(seminar_name, callback_data=str(ind))] for ind, seminar_name in
+                    enumerate(subjects)]
         reply_markup = InlineKeyboardMarkup(keyboard)
 
         update.message.reply_text("Выберите необходимый предмет", reply_markup=reply_markup)
@@ -253,19 +253,13 @@ def add_by_hand(update: Update, context: CallbackContext):
         context.user_data['command_to_add_chat_id'] = update.message.chat['id']
 
         subjects, _ = get_group_seminars(user_group['group'])
-        value = len(subjects)
+        subjects = sorted(subjects)
 
-        part_one = subjects[:int(value / 3)]
-        part_two = subjects[int(value / 3):int(value / 3) * 2]
-        part_three = subjects[int(value / 3) * 2:]
+        keyboard = [[InlineKeyboardButton(seminar_name, callback_data=str(ind))] for ind, seminar_name in
+                    enumerate(subjects)]
+        reply_markup = InlineKeyboardMarkup(keyboard)
 
-        keyboard = [part_one, part_two, part_three]
-
-        sent_message = update.message.reply_text(f'Выберите необходимый предмет.',
-                                                 reply_markup=ReplyKeyboardMarkup(keyboard, one_time_keyboard=True,
-                                                                                  resize_keyboard=True))
-
-        context.user_data['reply_to_add_mes_id_1'] = sent_message['message_id']
+        update.message.reply_text(f'Выберите необходимый предмет', reply_markup=reply_markup)
 
         return FIELD
 
@@ -276,24 +270,20 @@ def add_by_hand(update: Update, context: CallbackContext):
 
 
 def pick_field_by_hand(update: Update, context: CallbackContext):
-    user = update.message.from_user
-    user_id = update.message.chat['id']
+    query = update.callback_query
+    query.answer()
 
-    context.user_data['command_to_add_mes_id_2'] = update.message['message_id']
+    field_index = query.data
+    field_text = query.message.reply_markup.inline_keyboard[int(field_index)][0]['text']
+    context.user_data['user_filed_choice'] = field_text
 
-    field = update.message.text
-    context.user_data['choice'] = field
-    sent_message = update.message.reply_text(f'Отправьте фотографию или текст! Не забудьте добавить /add.')
-
-    context.user_data['reply_to_add_mes_id_2'] = sent_message['message_id']
+    query.edit_message_text(text=f"Отправьте фотографию или текст! Не забудьте добавить /add.")
 
     return ADDED
 
 
 def load_by_hand(update: Update, context: CallbackContext):
-    user = update.message.from_user
     user_id = update.message.chat['id']
-
     if len(update.message.photo) == 0:
         is_photo = False
         message = update.message.text.split("/add")[1].strip()
@@ -301,7 +291,7 @@ def load_by_hand(update: Update, context: CallbackContext):
         is_photo = True
         file_id = update.message.photo[-1]['file_id']
 
-    field = context.user_data['choice']
+    field = context.user_data['user_filed_choice']
 
     if is_photo:
         write_data(user_id, field, file_id)
@@ -318,13 +308,6 @@ def load_by_hand(update: Update, context: CallbackContext):
 
     update.message.bot.delete_message(context.user_data['command_to_add_chat_id'],
                                       context.user_data['command_to_add_mes_id_1'])
-    update.message.bot.delete_message(context.user_data['command_to_add_chat_id'],
-                                      context.user_data['reply_to_add_mes_id_1'])
-
-    update.message.bot.delete_message(context.user_data['command_to_add_chat_id'],
-                                      context.user_data['command_to_add_mes_id_2'])
-    update.message.bot.delete_message(context.user_data['command_to_add_chat_id'],
-                                      context.user_data['reply_to_add_mes_id_2'])
 
     return ConversationHandler.END
 
@@ -372,17 +355,19 @@ def main():
 
     dispatcher.add_handler(conv_handler_view_assigment)
 
-    conv_handler_two = ConversationHandler(
+
+    conv_handler_add_assigment_by_hand = ConversationHandler(
         entry_points=[MessageHandler(Filters.regex('^Добавить задание вручную$'), add_by_hand)],
         states={
-            FIELD: [MessageHandler(Filters.text & ~(Filters.command), pick_field_by_hand)],
+            FIELD: [CallbackQueryHandler(pick_field_by_hand)],
             ADDED: [MessageHandler(Filters.photo & Filters.caption('^/add$'), load_by_hand),
                     CommandHandler("add", load_by_hand)]
+
         },
-        fallbacks=[CommandHandler('restart', restart)]
+        fallbacks=[CommandHandler('start', start)],
     )
 
-    dispatcher.add_handler(conv_handler_two)
+    dispatcher.add_handler(conv_handler_add_assigment_by_hand)
     dispatcher.add_handler(MessageHandler(Filters.photo & Filters.caption('^/add$'), add))
     dispatcher.add_handler(CommandHandler("add", add))
     dispatcher.add_handler(CommandHandler("restart", restart))
