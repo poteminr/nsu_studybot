@@ -23,7 +23,7 @@ FIRST, SECOND = range(2)
 reply_keyboard = [['Просмотреть домашние задания'], ['Добавить задание вручную']]
 
 
-def start(update: Update, context: CallbackContext) -> int:
+def start(update: Update, _: CallbackContext):
     user = update.message.from_user
     logger.info("User %s started the conversation.", user.first_name)
 
@@ -41,7 +41,7 @@ def start(update: Update, context: CallbackContext) -> int:
     return FIRST
 
 
-def start_over(update: Update, context: CallbackContext) -> int:
+def start_over(update: Update, _: CallbackContext):
     query = update.callback_query
     query.answer()
 
@@ -56,7 +56,7 @@ def start_over(update: Update, context: CallbackContext) -> int:
     return FIRST
 
 
-def choose_university_nsk(update: Update, context: CallbackContext):
+def choose_university_nsk(update: Update, _: CallbackContext):
     query = update.callback_query
     query.answer()
 
@@ -71,7 +71,7 @@ def choose_university_nsk(update: Update, context: CallbackContext):
     return FIRST
 
 
-def choose_university_msk(update: Update, context: CallbackContext) -> int:
+def choose_university_msk(update: Update, _: CallbackContext) -> int:
     query = update.callback_query
     query.answer()
 
@@ -86,7 +86,7 @@ def choose_university_msk(update: Update, context: CallbackContext) -> int:
     return FIRST
 
 
-def confirm_choice_of_university(update: Update, context: CallbackContext):
+def confirm_choice_of_university(update: Update, _: CallbackContext):
     query = update.callback_query
     query.answer()
 
@@ -108,11 +108,11 @@ def confirm_choice_of_university(update: Update, context: CallbackContext):
     return SECOND
 
 
-def university_selection_end(update: Update, context: CallbackContext):
+def university_selection_end(update: Update, _: CallbackContext):
     query = update.callback_query
     query.answer()
 
-    query.edit_message_text(text="Университет выбран! \nТеперь используйте '/group номер вашей группы'")
+    query.edit_message_text(text="Университет выбран! \nТеперь используйте '/group номер группы'")
 
     return ConversationHandler.END
 
@@ -142,18 +142,16 @@ def init_user_group(update: Update, _: CallbackContext):
         update.message.reply_text(text, reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False,
                                                                          resize_keyboard=True))
     except KeyError:
-        write_data(user_id, 'group', -1)
+        write_data(user_id, 'group', None)
         update.message.reply_text(f"Группа {user_group} не найдена, используйте команду еще раз.", )
 
 
-# TODO: Refactor and optimize this function
 def add(update: Update, _: CallbackContext):
-    user = update.message.from_user
     user_id = update.message.chat['id']
     date = update.message.date
 
-    user_group = read_data(user_id)
-    reply_murkup_keyboard = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False, resize_keyboard=True)
+    user_group = read_data(user_id)['group']
+    reply_markup_keyboard = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False, resize_keyboard=True)
 
     if user_group is not None:
         if len(update.message.photo) == 0:
@@ -170,32 +168,31 @@ def add(update: Update, _: CallbackContext):
                 write_data(user_id, field, file_id)
 
                 update.message.reply_text(f'Фотография "{field}" успешно загружена!',
-                                          reply_markup=reply_murkup_keyboard)
+                                          reply_markup=reply_markup_keyboard)
             else:
                 write_data(user_id, field, message)
 
                 update.message.reply_text(f'Текст "{field}" успешно загружен!',
-                                          reply_markup=reply_murkup_keyboard)
+                                          reply_markup=reply_markup_keyboard)
         else:
             update.message.reply_text(f'Занятия сейчас нет. Попробуйте добавить вручную!',
-                                      reply_markup=reply_murkup_keyboard)
+                                      reply_markup=reply_markup_keyboard)
 
     else:
         update.message.reply_text(f'Необходимо ввести номер группы. (/group номер)',
-                                  reply_markup=reply_murkup_keyboard)
+                                  reply_markup=reply_markup_keyboard)
 
 
 def view_assigment(update: Update, context: CallbackContext):
-    user = update.message.from_user
     user_id = update.message.chat['id']
-    user_group = read_data(user_id)
+    user_group = read_data(user_id)['group']
 
     if user_group is not None:
 
         context.user_data['command_to_view_message_id'] = update.message['message_id']
         context.user_data['command_to_view_chat_id'] = update.message.chat['id']
 
-        subjects, _ = get_group_seminars(user_group['group'])
+        subjects, _ = get_group_seminars(user_group)
         subjects = sorted(subjects)
 
         keyboard = [[InlineKeyboardButton(seminar_name, callback_data=str(ind))] for ind, seminar_name in
@@ -244,15 +241,14 @@ FIELD, ADDED = range(2)
 
 
 def add_by_hand(update: Update, context: CallbackContext):
-    user = update.message.from_user
     user_id = update.message.chat['id']
-    user_group = read_data(user_id)
+    user_group = read_data(user_id)['group']
 
     if user_group is not None:
         context.user_data['command_to_add_mes_id_1'] = update.message['message_id']
         context.user_data['command_to_add_chat_id'] = update.message.chat['id']
 
-        subjects, _ = get_group_seminars(user_group['group'])
+        subjects, _ = get_group_seminars(user_group)
         subjects = sorted(subjects)
 
         keyboard = [[InlineKeyboardButton(seminar_name, callback_data=str(ind))] for ind, seminar_name in
@@ -354,7 +350,6 @@ def main():
     )
 
     dispatcher.add_handler(conv_handler_view_assigment)
-
 
     conv_handler_add_assigment_by_hand = ConversationHandler(
         entry_points=[MessageHandler(Filters.regex('^Добавить задание вручную$'), add_by_hand)],
