@@ -1,7 +1,8 @@
-from scripts.bot_functions import write_data, read_data, get_seminar_number_by_time, university_codes2text, \
-    university_codes2city
+from scripts.bot_functions import write_data, read_data, get_seminar_info_by_time, university_codes2text, \
+    university_codes2city, get_next_seminar_date, get_date_of_lesson
 from scripts.schedule_api import get_group_seminars, get_group_id
 from scripts.private_keys import import_private_keys
+import datetime
 import logging
 import telegram.error
 from telegram import ReplyKeyboardMarkup, Update, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
@@ -17,7 +18,7 @@ from telegram.ext import (
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-SUBJECT = range(1)
+SUBJECT, B = range(2)
 FIRST, SECOND = range(2)
 
 reply_keyboard = [['Просмотреть домашние задания'], ['Добавить задание вручную']]
@@ -91,8 +92,8 @@ def confirm_choice_of_university(update: Update, _: CallbackContext):
     query.answer()
 
     user_id = query.message.chat.id
-    write_data(user_id, 'university_code', query.data)
-    write_data(user_id, 'city', university_codes2city(query.data))
+    write_data(user_id, query.data, 'university_code')
+    write_data(user_id, university_codes2city(query.data), 'city')
 
     keyboard = [
         [
@@ -136,17 +137,17 @@ def init_user_group(update: Update, _: CallbackContext):
 
     try:
         get_group_id(user_group)
-        write_data(user_id, 'group', user_group)
+        write_data(user_id, user_group, 'group')
 
         text = f"Группа {user_group}, отлично! Чтобы сменить, используйте команду заново."
         update.message.reply_text(text, reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False,
                                                                          resize_keyboard=True))
     except KeyError:
-        write_data(user_id, 'group', None)
+        write_data(user_id, None, 'group')
         update.message.reply_text(f"Группа {user_group} не найдена, используйте команду еще раз.", )
 
 
-def add(update: Update, _: CallbackContext):
+def add(update: Update, context: CallbackContext):
     user_id = update.message.chat['id']
     date = update.message.date
 
@@ -161,9 +162,12 @@ def add(update: Update, _: CallbackContext):
             is_photo = True
             file_id = update.message.photo[-1]['file_id']
 
-        field = get_seminar_number_by_time(user_id, date)
+        field, seminar_weekdays = get_seminar_info_by_time(user_id, date)
 
         if field is not None:
+            # next_seminar_date = get_next_seminar_date(date, seminar_weekdays)
+            # context.user_data['homework_data'] =
+
             if is_photo:
                 write_data(user_id, field, file_id)
 
@@ -192,7 +196,7 @@ def view_assigment(update: Update, context: CallbackContext):
         context.user_data['command_to_view_message_id'] = update.message['message_id']
         context.user_data['command_to_view_chat_id'] = update.message.chat['id']
 
-        subjects, _ = get_group_seminars(user_group)
+        subjects, _, _ = get_group_seminars(user_group)
         subjects = sorted(subjects)
 
         keyboard = [[InlineKeyboardButton(seminar_name, callback_data=str(ind))] for ind, seminar_name in
@@ -209,7 +213,7 @@ def view_assigment(update: Update, context: CallbackContext):
                                                                    resize_keyboard=True))
 
 
-def send_assigment_to_user(update: Update, context: CallbackContext):
+def pick_seminar_date_from_list(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
     user_id = query.message.chat.id
@@ -219,17 +223,40 @@ def send_assigment_to_user(update: Update, context: CallbackContext):
     field_index = query.data
     field_text = query.message.reply_markup.inline_keyboard[int(field_index)][0]['text']
 
+    context.user_data['user_field_choice'] = field_text
+
+    seminar_dates_with_assignments = list(user_data[field_text].keys())
+    seminar_dates_with_assignments.sort(key=lambda d: datetime.datetime.strptime(d, "%d.%m.%Y"))
+
+    keyboard = [[InlineKeyboardButton(date, callback_data=date)] for date in seminar_dates_with_assignments]
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    query.edit_message_text(text="Выберите дату занятия.", reply_markup=reply_markup)
+
+    return B
+
+
+def send_assigment_to_user(update: Update, context: CallbackContext):
+    query = update.callback_query
+    query.answer()
+    user_id = query.message.chat.id
+
+    user_data = read_data(user_id)
+
+    field_date = query.data
+    field_text = context.user_data['user_field_choice']
+
     if field_text in user_data.keys():
-        data = user_data[field_text]
+        data = user_data[field_text][field_date]
         try:
             update.callback_query.message.reply_photo(data, caption=f"{field_text}")
             query.delete_message()
 
         except telegram.error.BadRequest:
-            query.edit_message_text(text=f"{field_text}: \n{data}")
+            query.edit_message_text(text=f"{field_text} на {field_date}: \n{data}")
 
     else:
-        query.edit_message_text(text=f'Данные по предмету: \n"{field_text}" \nотсутствуют.')
+        query.edit_message_text(text=f'Данные по предмету: "{field_text}" отсутствуют.')
 
     update.callback_query.message.bot.delete_message(context.user_data['command_to_view_chat_id'],
                                                      context.user_data['command_to_view_message_id'])
@@ -237,19 +264,22 @@ def send_assigment_to_user(update: Update, context: CallbackContext):
     return ConversationHandler.END
 
 
-FIELD, ADDED = range(2)
+FIELD, ADDED, T = range(3)
 
 
 def add_by_hand(update: Update, context: CallbackContext):
     user_id = update.message.chat['id']
     user_group = read_data(user_id)['group']
+    context.user_data['user_group'] = user_group
 
     if user_group is not None:
         context.user_data['command_to_add_mes_id_1'] = update.message['message_id']
         context.user_data['command_to_add_chat_id'] = update.message.chat['id']
 
-        subjects, _ = get_group_seminars(user_group)
+        subjects, _, seminars_weekdays = get_group_seminars(user_group)
         subjects = sorted(subjects)
+
+        context.user_data['seminars_weekdays'] = seminars_weekdays
 
         keyboard = [[InlineKeyboardButton(seminar_name, callback_data=str(ind))] for ind, seminar_name in
                     enumerate(subjects)]
@@ -271,15 +301,60 @@ def pick_field_by_hand(update: Update, context: CallbackContext):
 
     field_index = query.data
     field_text = query.message.reply_markup.inline_keyboard[int(field_index)][0]['text']
-    context.user_data['user_filed_choice'] = field_text
+    context.user_data['user_field_choice'] = field_text
 
-    query.edit_message_text(text=f"Отправьте фотографию или текст! Не забудьте добавить /add.")
+    keyboard = [
+        [InlineKeyboardButton("Добавить задание на будущие занятия ", callback_data='future_seminars')],
+        [InlineKeyboardButton("Изменить задание прошедших занятий", callback_data='past_seminars')],
+    ]
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    query.edit_message_text(text=f"Выберите дату занятия.", reply_markup=reply_markup)
 
     return ADDED
 
 
+def pick_seminar_date_by_hand(update: Update, context: CallbackContext):
+    query = update.callback_query
+    query.answer()
+
+    field_text = context.user_data['user_field_choice']
+    time_index = query.data
+    date = query.message.date
+
+    seminar_weekdays = context.user_data['seminars_weekdays'][field_text]
+
+    keyboard = None
+    if time_index == "future_seminars":
+        future_seminars_dates = [get_date_of_lesson(date, wd) for wd in seminar_weekdays]
+        future_seminars_dates.sort(key=lambda d: datetime.datetime.strptime(d, "%d.%m.%Y"))
+
+        keyboard = [[InlineKeyboardButton(date, callback_data=date)] for date in future_seminars_dates]
+
+    elif time_index == "past_seminars":
+        raise NotImplemented
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    query.edit_message_text(text="Выберите дату занятия.", reply_markup=reply_markup)
+
+    return T
+
+
+def choose_seminar_date(update: Update, context: CallbackContext):
+    query = update.callback_query
+    query.answer()
+
+    date = query.data
+    context.user_data['seminar_date'] = date
+
+    query.edit_message_text(text=f"Отправьте фотографию или текст! Не забудьте добавить /add.")
+
+    return T
+
+
 def load_by_hand(update: Update, context: CallbackContext):
     user_id = update.message.chat['id']
+
     if len(update.message.photo) == 0:
         is_photo = False
         message = update.message.text.split("/add")[1].strip()
@@ -287,16 +362,17 @@ def load_by_hand(update: Update, context: CallbackContext):
         is_photo = True
         file_id = update.message.photo[-1]['file_id']
 
-    field = context.user_data['user_filed_choice']
+    field = context.user_data['user_field_choice']
+    date = context.user_data['seminar_date']
 
     if is_photo:
-        write_data(user_id, field, file_id)
+        write_data(user_id, file_id, field, date)
 
         update.message.reply_text(f'Фотография "{field}" успешно загружена!',
                                   reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False,
                                                                    resize_keyboard=True))
     else:
-        write_data(user_id, field, message)
+        write_data(user_id, message, field, date)
 
         update.message.reply_text(f'Текст "{field}" успешно загружен!',
                                   reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False,
@@ -341,9 +417,12 @@ def main():
     conv_handler_view_assigment = ConversationHandler(
         entry_points=[MessageHandler(Filters.regex('^Просмотреть домашние задания$'), view_assigment)],
         states={
-            SUBJECT: [
-                CallbackQueryHandler(send_assigment_to_user),
+            B: [
+                CallbackQueryHandler(send_assigment_to_user)
             ],
+            SUBJECT: [
+                CallbackQueryHandler(pick_seminar_date_from_list)
+            ]
 
         },
         fallbacks=[CommandHandler('start', start)],
@@ -355,9 +434,12 @@ def main():
         entry_points=[MessageHandler(Filters.regex('^Добавить задание вручную$'), add_by_hand)],
         states={
             FIELD: [CallbackQueryHandler(pick_field_by_hand)],
-            ADDED: [MessageHandler(Filters.photo & Filters.caption('^/add$'), load_by_hand),
-                    CommandHandler("add", load_by_hand)]
+            ADDED: [CallbackQueryHandler(pick_seminar_date_by_hand)],
 
+            T: [CallbackQueryHandler(choose_seminar_date),
+                MessageHandler(Filters.photo & Filters.caption('^/add$'), load_by_hand),
+                CommandHandler("add", load_by_hand)
+                ]
         },
         fallbacks=[CommandHandler('start', start)],
     )

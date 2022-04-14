@@ -25,24 +25,6 @@ def get_group_schedule(group_number: int) -> List:
     return group_schedule.json()
 
 
-def get_group_seminars(group_number: int) -> Tuple[List[str], Dict]:
-    schedule = get_group_schedule(group_number)
-
-    seminars_set = []
-    seminars = {}
-
-    for lesson in schedule:
-        if lesson['type'] in ['пр', 'лаб']:
-            seminars_set.append(lesson['name'])
-
-            if lesson['weekday'] not in seminars.keys():
-                seminars[lesson['weekday']] = {}
-
-            seminars[lesson['weekday']][lesson['id_time']] = lesson['name']
-
-    return list(set(seminars_set)), seminars
-
-
 def get_bells_schedule():
     # return list with dicts
     method_url = 'https://table.nsu.ru/api/time'
@@ -87,3 +69,29 @@ def get_week_parity() -> str:
     result = requests.get(method_url, auth=HTTPBasicAuth(API_KEY, ''))
 
     return result.json()['actual']
+
+
+def get_group_seminars(group_number: int) -> Tuple[List[str], Dict[int, Dict[int, str]], Dict[str, List[int]]]:
+    schedule = get_group_schedule(group_number)
+
+    list_of_all_seminars = []
+    seminars = {}
+    seminars_weekdays = {}
+
+    for lesson in schedule:
+        if lesson['type'] in ['пр', 'лаб']:
+            weekday = lesson['weekday']
+            id_time = lesson['id_time']
+            name = lesson['name']
+
+            if name not in seminars_weekdays.keys():
+                seminars_weekdays[name] = []
+
+            if weekday not in seminars.keys():
+                seminars[weekday] = {}
+
+            seminars[weekday][id_time] = name
+            seminars_weekdays[name].append(weekday)
+            list_of_all_seminars.append(name)
+
+    return list(set(list_of_all_seminars)), seminars, seminars_weekdays
