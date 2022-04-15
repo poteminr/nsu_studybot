@@ -2,15 +2,7 @@ from scripts.bot_functions import write_data, university_codes2city, university_
 from scripts.schedule_api import get_group_id
 import logging
 from telegram import ReplyKeyboardMarkup, Update, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import (
-    Updater,
-    CommandHandler,
-    CallbackContext,
-    MessageHandler, Filters,
-    ConversationHandler,
-    CallbackQueryHandler
-)
-
+from telegram.ext import CommandHandler, CallbackContext, ConversationHandler, CallbackQueryHandler
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -134,20 +126,20 @@ def init_user_group(update: Update, _: CallbackContext):
 
 
 conv_handler_pick_university = ConversationHandler(
-        entry_points=[CommandHandler('start', start)],
-        states={
-            FIRST_STAGE: [
-                CallbackQueryHandler(choose_university_nsk, pattern='^' + str(1) + '$'),
-                CallbackQueryHandler(choose_university_msk, pattern='^' + str(2) + '$'),
-                CallbackQueryHandler(confirm_choice_of_university, pattern='^' + str(1.1) + '$'),
-                CallbackQueryHandler(confirm_choice_of_university, pattern='^' + str(1.2) + '$'),
-                CallbackQueryHandler(confirm_choice_of_university, pattern='^' + str(2.1) + '$'),
-                CallbackQueryHandler(confirm_choice_of_university, pattern='^' + str(2.2) + '$'),
-            ],
-            SECOND_STAGE: [
-                CallbackQueryHandler(start_over, pattern='^' + str(1) + '$'),
-                CallbackQueryHandler(university_selection_end, pattern='^' + str(2) + '$'),
-            ],
-        },
-        fallbacks=[CommandHandler('start', start)],
-    )
+    entry_points=[CommandHandler('start', start)],
+    states={
+        FIRST_STAGE: [
+            CallbackQueryHandler(choose_university_nsk, pattern='^' + str(1) + '$'),
+            CallbackQueryHandler(choose_university_msk, pattern='^' + str(2) + '$'),
+            CallbackQueryHandler(confirm_choice_of_university, pattern='^' + str(1.1) + '$'),
+            CallbackQueryHandler(confirm_choice_of_university, pattern='^' + str(1.2) + '$'),
+            CallbackQueryHandler(confirm_choice_of_university, pattern='^' + str(2.1) + '$'),
+            CallbackQueryHandler(confirm_choice_of_university, pattern='^' + str(2.2) + '$'),
+        ],
+        SECOND_STAGE: [
+            CallbackQueryHandler(start_over, pattern='^' + str(1) + '$'),
+            CallbackQueryHandler(university_selection_end, pattern='^' + str(2) + '$'),
+        ],
+    },
+    fallbacks=[CommandHandler('start', start)],
+)

@@ -1,19 +1,96 @@
 from scripts.schedule_api import get_group_seminars
-from scripts.bot_functions import read_data, generate_dates_of_future_seminars, write_data
+from scripts.bot_functions import read_data, generate_dates_of_future_seminars, write_data, get_seminar_info_by_time
 from scripts.registration import start
-from telegram import ReplyKeyboardMarkup, Update, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import (
-    Updater,
-    CommandHandler,
-    CallbackContext,
-    MessageHandler, Filters,
-    ConversationHandler,
+from telegram import ReplyKeyboardMarkup, Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import CommandHandler, CallbackContext, MessageHandler, Filters, ConversationHandler, \
     CallbackQueryHandler
-)
 
 FIELD, TIME_TYPE, DATE = range(3)
 
 reply_keyboard = [['Просмотреть домашние задания'], ['Добавить задание вручную']]
+
+PICK_DATE = range(1)
+
+
+def add_during_seminar(update: Update, context: CallbackContext):
+    user_id = update.message.chat['id']
+    date = update.message.date
+
+    user_group = read_data(user_id)['group']
+    reply_markup_keyboard = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False, resize_keyboard=True)
+
+    if user_group is not None:
+        if len(update.message.photo) == 0:
+            is_photo = False
+            data = update.message.text.split("/add")[1].strip()
+        else:
+            is_photo = True
+            data = update.message.photo[-1]['file_id']
+
+        field, seminar_weekdays = get_seminar_info_by_time(user_id, date)
+
+        if field is not None:
+            future_seminars_dates = generate_dates_of_future_seminars(date, seminar_weekdays)
+            next_seminar_date = future_seminars_dates[0]
+
+            context.user_data['homework_data'] = data
+            context.user_data['is_photo'] = is_photo
+            context.user_data['next_seminar_date'] = next_seminar_date
+            context.user_data['field'] = field
+
+            keyboard = [
+                [InlineKeyboardButton(f"Добавить на следующий семинар ({next_seminar_date})",
+                                      callback_data="next_seminar")],
+                [InlineKeyboardButton("Записать на другую дату в будущем.", callback_data='other_dates')],
+            ]
+
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            update.message.reply_text("На какой день записать?", reply_markup=reply_markup)
+
+            return PICK_DATE
+
+        else:
+            update.message.reply_text(f'Занятия сейчас нет. Попробуйте добавить вручную!',
+                                      reply_markup=reply_markup_keyboard)
+    else:
+        update.message.reply_text(f'Необходимо ввести номер группы. (/group номер)',
+                                  reply_markup=reply_markup_keyboard)
+
+
+def pick_other_dates(update: Update, context: CallbackContext):
+    query = update.callback_query
+    query.answer()
+
+    user_choice = query.data
+    user_id = query.message.chat.id
+    field = context.user_data['field']
+
+    if user_choice == 'next_seminar':
+        is_photo = context.user_data['is_photo']
+        data = context.user_data['homework_data']
+        next_seminar_date = context.user_data['next_seminar_date']
+
+        write_data(user_id, data, field, next_seminar_date)
+
+        if is_photo:
+            query.edit_message_text(f'Фотография "{field}" на {next_seminar_date} успешно загружена!')
+        else:
+            query.edit_message_text(f'Текст "{field}" на {next_seminar_date} успешно загружен!')
+
+        return ConversationHandler.END
+    elif user_choice == 'other_dates':
+        raise NotImplemented
+
+
+conv_handler_add_assignment_during_seminar = ConversationHandler(
+    entry_points=[MessageHandler(Filters.photo & Filters.caption('^/add$'), add_during_seminar),
+                  CommandHandler("add", add_during_seminar)],
+    states={
+        PICK_DATE: [CallbackQueryHandler(pick_other_dates)],
+
+    },
+    fallbacks=[CommandHandler('start', start)],
+)
 
 
 def add_assignment(update: Update, context: CallbackContext):
