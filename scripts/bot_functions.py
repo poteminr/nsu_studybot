@@ -82,6 +82,10 @@ def university_codes2city(code: str):
     return city_codes[code.split(".")[0]]
 
 
+def datetime2string(date):
+    return f"{date.day}.{date.month}.{date.year}"
+
+
 def get_date_of_lesson(current_date, lesson_weekday, return_datetime=False):
     current_weekday = current_date.weekday() + 1
 
@@ -99,7 +103,7 @@ def get_date_of_lesson(current_date, lesson_weekday, return_datetime=False):
     if return_datetime:
         return lesson_date
     else:
-        return f"{lesson_date.day}.{lesson_date.month}.{lesson_date.year}"
+        return datetime2string(lesson_date)
 
 
 def get_next_seminar_weekday_by_current_weekday(weekday, seminar_weekdays):
@@ -121,3 +125,19 @@ def get_next_seminar_date(current_date, seminar_weekdays):
     next_seminar_datetime = get_date_of_lesson(current_date, next_seminar_weekday)
 
     return next_seminar_datetime
+
+
+def generate_dates_of_future_seminars(date, seminar_weekdays, months=2):
+    future_seminars_dates = []
+
+    for weekday in seminar_weekdays:
+        future_date = get_date_of_lesson(date, weekday, return_datetime=True)
+        future_seminars_dates.append(datetime2string(future_date))
+
+        for factor in range(1, months + 1):
+            future_date_with_period = future_date + datetime.timedelta(days=14*factor)
+            future_seminars_dates.append(datetime2string(future_date_with_period))
+
+    future_seminars_dates.sort(key=lambda d: datetime.datetime.strptime(d, "%d.%m.%Y"))
+
+    return future_seminars_dates
