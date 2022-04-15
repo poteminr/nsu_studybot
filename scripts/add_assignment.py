@@ -9,7 +9,7 @@ FIELD, TIME_TYPE, DATE = range(3)
 
 reply_keyboard = [['Просмотреть домашние задания'], ['Добавить задание вручную']]
 
-PICK_DATE = range(1)
+PICK_DATE, CHOOSE_FROM_OTHER_DATE = range(2)
 
 
 def add_during_seminar(update: Update, context: CallbackContext):
@@ -37,11 +37,12 @@ def add_during_seminar(update: Update, context: CallbackContext):
             context.user_data['is_photo'] = is_photo
             context.user_data['next_seminar_date'] = next_seminar_date
             context.user_data['field'] = field
+            context.user_data['future_seminars_dates'] = future_seminars_dates
 
             keyboard = [
                 [InlineKeyboardButton(f"Добавить на следующий семинар ({next_seminar_date})",
                                       callback_data="next_seminar")],
-                [InlineKeyboardButton("Записать на другую дату в будущем.", callback_data='other_dates')],
+                [InlineKeyboardButton("Выбрать другую дату", callback_data='other_dates')],
             ]
 
             reply_markup = InlineKeyboardMarkup(keyboard)
@@ -78,8 +79,38 @@ def pick_other_dates(update: Update, context: CallbackContext):
             query.edit_message_text(f'Текст "{field}" на {next_seminar_date} успешно загружен!')
 
         return ConversationHandler.END
+
     elif user_choice == 'other_dates':
-        raise NotImplemented
+        future_seminars_dates = context.user_data['future_seminars_dates']
+
+        buttons = [InlineKeyboardButton(date, callback_data=date) for date in future_seminars_dates]
+        keyboard = [buttons[k:k + 2] for k in range(0, len(buttons), 2)]
+
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        query.edit_message_text(text="Выберите дату занятия.", reply_markup=reply_markup)
+
+        return CHOOSE_FROM_OTHER_DATE
+
+
+def upload_to_other_date(update: Update, context: CallbackContext):
+    query = update.callback_query
+    query.answer()
+    date = query.data
+
+    user_id = query.message.chat.id
+    field = context.user_data['field']
+
+    is_photo = context.user_data['is_photo']
+    data = context.user_data['homework_data']
+
+    write_data(user_id, data, field, date)
+
+    if is_photo:
+        query.edit_message_text(f'Фотография "{field}" на {date} успешно загружена!')
+    else:
+        query.edit_message_text(f'Текст "{field}" на {date} успешно загружен!')
+
+    return ConversationHandler.END
 
 
 conv_handler_add_assignment_during_seminar = ConversationHandler(
@@ -87,6 +118,7 @@ conv_handler_add_assignment_during_seminar = ConversationHandler(
                   CommandHandler("add", add_during_seminar)],
     states={
         PICK_DATE: [CallbackQueryHandler(pick_other_dates)],
+        CHOOSE_FROM_OTHER_DATE: [CallbackQueryHandler(upload_to_other_date)]
 
     },
     fallbacks=[CommandHandler('start', start)],
@@ -131,7 +163,7 @@ def choose_time_type_of_assignment(update: Update, context: CallbackContext):
 
     keyboard = [
         [InlineKeyboardButton("Добавить задание на будущие занятия ", callback_data='future_seminars')],
-        [InlineKeyboardButton("Изменить задание прошедших занятий", callback_data='past_seminars')],
+        [InlineKeyboardButton("Редактировать добавленные задания", callback_data='past_seminars')],
     ]
 
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -158,7 +190,17 @@ def choose_assignment_date(update: Update, context: CallbackContext):
         keyboard = [buttons[k:k + 2] for k in range(0, len(buttons), 2)]
 
     elif time_index == "past_seminars":
-        raise NotImplemented
+        user_id = query.message.chat['id']
+        user_data = read_data(user_id)
+
+        if field_text not in user_data.keys():
+            query.edit_message_text(f'Нет добавленных заданий по "{field_text}"')
+            return ConversationHandler.END
+
+        added_dates = list(read_data(user_id)[field_text].keys())
+
+        buttons = [InlineKeyboardButton(date, callback_data=date) for date in added_dates]
+        keyboard = [buttons[k:k + 2] for k in range(0, len(buttons), 2)]
 
     reply_markup = InlineKeyboardMarkup(keyboard)
     query.edit_message_text(text="Выберите дату занятия.", reply_markup=reply_markup)
