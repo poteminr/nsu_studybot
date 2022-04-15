@@ -1,20 +1,18 @@
-from scripts.bot_functions import write_data, read_data, get_seminar_info_by_time, university_codes2text, \
-    university_codes2city, get_next_seminar_date, get_date_of_lesson
-from scripts.schedule_api import get_group_seminars, get_group_id
+from scripts.bot_functions import write_data, read_data, get_seminar_info_by_time
 from scripts.private_keys import import_private_keys
-from registration import start, init_user_group, conv_handler_pick_university
-from view_assignment import conv_handler_view_assignment
-from add_assignment import conv_handler_add_assignment_by_hand
+from scripts.registration import init_user_group, conv_handler_pick_university
+from scripts.view_assignment import conv_handler_view_assignment
+from scripts.add_assignment import conv_handler_add_assignment_by_hand
 import logging
-from telegram import ReplyKeyboardMarkup, Update, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import ReplyKeyboardMarkup, Update
 from telegram.ext import (
     Updater,
     CommandHandler,
     CallbackContext,
     MessageHandler, Filters,
-    ConversationHandler,
-    CallbackQueryHandler
+    ConversationHandler
 )
+
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 

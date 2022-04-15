@@ -1,4 +1,4 @@
-from scripts.bot_functions import write_data, read_data, university_codes2city, university_codes2text
+from scripts.bot_functions import write_data, university_codes2city, university_codes2text
 from scripts.schedule_api import get_group_id
 import logging
 from telegram import ReplyKeyboardMarkup, Update, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
@@ -24,7 +24,7 @@ def start(update: Update, _: CallbackContext):
     user = update.message.from_user
     logger.info("User %s started the conversation.", user.first_name)
 
-    update.message.reply_photo(photo=open("images/studybot_info.png", 'rb'), reply_markup=ReplyKeyboardRemove())
+    update.message.reply_photo(photo=open("../images/studybot_info.png", 'rb'), reply_markup=ReplyKeyboardRemove())
 
     keyboard = [
         [InlineKeyboardButton("Новосибирск", callback_data=str(1))],

@@ -1,11 +1,10 @@
 from scripts.bot_functions import read_data
 from scripts.schedule_api import get_group_seminars
-from registration import start
+from scripts.registration import start
 import datetime
 import telegram.error
-from telegram import ReplyKeyboardMarkup, Update, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import ReplyKeyboardMarkup, Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
-    Updater,
     CommandHandler,
     CallbackContext,
     MessageHandler, Filters,
