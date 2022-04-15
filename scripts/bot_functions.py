@@ -1,6 +1,6 @@
 import json
 import datetime
-from typing import Tuple, Optional, List
+from typing import Tuple, Optional, List, Union
 from scripts.schedule_api import get_group_seminars, get_seminar_number, get_week_parity
 
 
@@ -39,7 +39,8 @@ def read_data(user_id: int):
 
 
 def preprocess_date(date: datetime.datetime) -> Tuple[int, int, int]:
-    weekday = datetime.date.weekday(date) + 1
+    print(type(date))
+    weekday = date.weekday() + 1
     hour = date.hour + 7
     minute = date.minute
 
@@ -50,7 +51,6 @@ def preprocess_date(date: datetime.datetime) -> Tuple[int, int, int]:
     return weekday, hour, minute
 
 
-# rename to get sem_name by time
 def get_seminar_info_by_time(user_id: int, date: datetime.datetime) -> Tuple[Optional[str], List[int]]:
     user_group = read_data(user_id)['group']
     weekday, hour, minute = preprocess_date(date)
@@ -69,24 +69,24 @@ def get_seminar_info_by_time(user_id: int, date: datetime.datetime) -> Tuple[Opt
     return current_subject, current_seminar_weekdays
 
 
-def university_codes2text(code: str):
+def university_codes2text(code: str) -> str:
     university_codes = {"1.1": "НГУ", '1.2': "НГТУ",
                         "2.1": "МГУ", "2.2": "МГТУ"}
 
     return university_codes[code]
 
 
-def university_codes2city(code: str):
+def university_codes2city(code: str) -> str:
     city_codes = {"1": "Новосибирск", "2": "Москва"}
 
     return city_codes[code.split(".")[0]]
 
 
-def datetime2string(date):
+def datetime2string(date: datetime.datetime) -> str:
     return f"{date.day}.{date.month}.{date.year}"
 
 
-def get_date_of_lesson(current_date, lesson_weekday, return_datetime=False):
+def get_date_of_lesson(current_date: datetime.datetime, lesson_weekday: int, return_datetime=False) -> Union[datetime.datetime, str]:
     current_weekday = current_date.weekday() + 1
 
     if get_week_parity() == 'even':
@@ -106,7 +106,7 @@ def get_date_of_lesson(current_date, lesson_weekday, return_datetime=False):
         return datetime2string(lesson_date)
 
 
-def get_next_seminar_weekday_by_current_weekday(weekday, seminar_weekdays):
+def get_next_seminar_weekday_by_current_weekday(weekday: int, seminar_weekdays: List[int]) -> int:
     index_of_weekday = seminar_weekdays.index(weekday)
 
     if index_of_weekday + 1 >= len(seminar_weekdays):
@@ -115,7 +115,7 @@ def get_next_seminar_weekday_by_current_weekday(weekday, seminar_weekdays):
         return seminar_weekdays[index_of_weekday + 1]
 
 
-def get_next_seminar_date(current_date, seminar_weekdays):
+def get_next_seminar_date(current_date: datetime.datetime, seminar_weekdays: List[int]) -> datetime.datetime:
     current_weekday, _, _ = preprocess_date(current_date)
 
     if get_week_parity() == 'even':
@@ -127,7 +127,7 @@ def get_next_seminar_date(current_date, seminar_weekdays):
     return next_seminar_datetime
 
 
-def generate_dates_of_future_seminars(date, seminar_weekdays, months=2):
+def generate_dates_of_future_seminars(date: datetime.datetime, seminar_weekdays: List[int], months=2) -> List[str]:
     future_seminars_dates = []
 
     for weekday in seminar_weekdays:
