@@ -1,6 +1,7 @@
 from scripts.schedule_api import get_group_seminars
-from scripts.bot_functions import read_data, generate_dates_of_future_seminars, write_data, get_seminar_info_by_time
+from scripts.bot_functions import generate_dates_of_future_seminars, get_seminar_info_by_time
 from scripts.registration import start
+from scripts.database import read_data, write_data
 from telegram import ReplyKeyboardMarkup, Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CommandHandler, CallbackContext, MessageHandler, Filters, ConversationHandler, \
     CallbackQueryHandler

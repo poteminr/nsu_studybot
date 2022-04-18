@@ -1,6 +1,6 @@
 import requests
 from requests.auth import HTTPBasicAuth
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Union
 import datetime
 from scripts.private_keys import import_private_keys
 
@@ -25,7 +25,7 @@ def get_group_schedule(group_number: int) -> List:
     return group_schedule.json()
 
 
-def get_bells_schedule():
+def get_bells_schedule() -> List[Dict[str, Union[str, int]]]:
     # return list with dicts
     method_url = 'https://table.nsu.ru/api/time'
     result = requests.get(method_url, auth=HTTPBasicAuth(API_KEY, ''))

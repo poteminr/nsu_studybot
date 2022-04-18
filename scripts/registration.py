@@ -1,4 +1,5 @@
-from scripts.bot_functions import write_data, university_codes2city, university_codes2text
+from scripts.bot_functions import university_codes2city, university_codes2text
+from scripts.database import write_data
 from scripts.schedule_api import get_group_id
 import logging
 from telegram import ReplyKeyboardMarkup, Update, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup

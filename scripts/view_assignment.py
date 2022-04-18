@@ -1,4 +1,4 @@
-from scripts.bot_functions import read_data
+from scripts.database import read_data
 from scripts.schedule_api import get_group_seminars
 from scripts.registration import start
 import datetime
