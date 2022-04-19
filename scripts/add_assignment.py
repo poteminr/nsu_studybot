@@ -1,5 +1,5 @@
 from scripts.schedule_api import get_group_seminars
-from scripts.bot_functions import generate_dates_of_future_seminars, get_seminar_info_by_time
+from scripts.bot_functions import generate_dates_of_future_seminars, get_seminar_info_by_time, convert_utc_to_local_time
 from scripts.registration import start
 from scripts.database import read_data, write_data
 from telegram import ReplyKeyboardMarkup, Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -15,9 +15,12 @@ PICK_DATE, CHOOSE_FROM_OTHER_DATE = range(2)
 
 def add_during_seminar(update: Update, context: CallbackContext):
     user_id = update.message.chat['id']
-    date = update.message.date
+    user_data = read_data(user_id)
+    user_group = user_data['group']
+    user_utc_delta = user_data['utc_delta']
 
-    user_group = read_data(user_id)['group']
+    date = convert_utc_to_local_time(update.message.date, user_utc_delta)
+
     reply_markup_keyboard = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False, resize_keyboard=True)
 
     if user_group is not None:
@@ -177,9 +180,14 @@ def choose_assignment_date(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
 
+    user_id = query.message.chat['id']
+    user_data = read_data(user_id)
+    user_utc_delta = user_data['utc_delta']
+
+    date = convert_utc_to_local_time(query.message.date, user_utc_delta)
+
     field_text = context.user_data['user_field_choice']
     time_index = query.data
-    date = query.message.date
 
     seminar_weekdays = context.user_data['seminars_weekdays'][field_text]
 
@@ -191,14 +199,11 @@ def choose_assignment_date(update: Update, context: CallbackContext):
         keyboard = [buttons[k:k + 2] for k in range(0, len(buttons), 2)]
 
     elif time_index == "past_seminars":
-        user_id = query.message.chat['id']
-        user_data = read_data(user_id)
-
         if field_text not in user_data.keys():
             query.edit_message_text(f'Нет добавленных заданий по "{field_text}"')
             return ConversationHandler.END
 
-        added_dates = list(read_data(user_id)[field_text].keys())
+        added_dates = list(user_data[field_text].keys())
 
         buttons = [InlineKeyboardButton(date, callback_data=date) for date in added_dates]
         keyboard = [buttons[k:k + 2] for k in range(0, len(buttons), 2)]

@@ -33,5 +33,4 @@ def read_data(user_id: int) -> dict:
         data = json.load(f)
 
         if str(user_id) in data.keys():
-            print(data[str(user_id)], type(data[str(user_id)]))
             return data[str(user_id)]

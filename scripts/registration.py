@@ -1,4 +1,4 @@
-from scripts.bot_functions import university_codes2city, university_codes2text
+from scripts.bot_functions import university_codes2city, university_codes2text, get_utc_delta_by_city
 from scripts.database import write_data
 from scripts.schedule_api import get_group_id
 import logging
@@ -17,7 +17,7 @@ def start(update: Update, _: CallbackContext):
     user = update.message.from_user
     logger.info("User %s started the conversation.", user.first_name)
 
-    update.message.reply_photo(photo=open("assignments_images/studybot_info.png", 'rb'), reply_markup=ReplyKeyboardRemove())
+    update.message.reply_photo(photo=open("images/studybot_info.png", 'rb'), reply_markup=ReplyKeyboardRemove())
 
     keyboard = [
         [InlineKeyboardButton("Новосибирск", callback_data=str(1))],
@@ -81,8 +81,12 @@ def confirm_choice_of_university(update: Update, _: CallbackContext):
     query.answer()
 
     user_id = query.message.chat.id
-    write_data(user_id, query.data, 'university_code')
-    write_data(user_id, university_codes2city(query.data), 'city')
+    user_university_code = query.data
+    user_city = university_codes2city(query.data)
+
+    write_data(user_id, user_university_code, 'university_code')
+    write_data(user_id, user_city, 'city')
+    write_data(user_id, get_utc_delta_by_city(user_city), 'utc_delta')
 
     keyboard = [
         [
