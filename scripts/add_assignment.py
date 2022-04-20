@@ -1,5 +1,5 @@
 from scripts.schedule_api import get_group_seminars
-from scripts.bot_functions import generate_dates_of_future_seminars, get_seminar_info_by_time, convert_utc_to_local_time
+from scripts.bot_functions import generate_dates_of_future_seminars, get_current_seminar, convert_utc_to_local_time
 from scripts.registration import start
 from scripts.database import read_data, write_data
 from telegram import ReplyKeyboardMarkup, Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -31,7 +31,7 @@ def add_during_seminar(update: Update, context: CallbackContext):
             is_photo = True
             data = update.message.photo[-1]['file_id']
 
-        field, seminar_weekdays = get_seminar_info_by_time(user_id, date)
+        field, seminar_weekdays = get_current_seminar(user_group, date)
 
         if field is not None:
             future_seminars_dates = generate_dates_of_future_seminars(date, seminar_weekdays)

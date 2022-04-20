@@ -1,4 +1,4 @@
-from scripts.bot_functions import university_codes2city, university_codes2text, get_utc_delta_by_city
+from scripts.bot_functions import university_code2city, university_code2text, get_utc_delta
 from scripts.database import write_data
 from scripts.schedule_api import get_group_id
 import logging
@@ -82,11 +82,11 @@ def confirm_choice_of_university(update: Update, _: CallbackContext):
 
     user_id = query.message.chat.id
     user_university_code = query.data
-    user_city = university_codes2city(query.data)
+    user_city = university_code2city(query.data)
 
     write_data(user_id, user_university_code, 'university_code')
     write_data(user_id, user_city, 'city')
-    write_data(user_id, get_utc_delta_by_city(user_city), 'utc_delta')
+    write_data(user_id, get_utc_delta(user_city), 'utc_delta')
 
     keyboard = [
         [
@@ -96,7 +96,7 @@ def confirm_choice_of_university(update: Update, _: CallbackContext):
     ]
 
     reply_markup = InlineKeyboardMarkup(keyboard)
-    query.edit_message_text(text=f"Вы выбрали {university_codes2text(query.data)}. Всё верно?",
+    query.edit_message_text(text=f"Вы выбрали {university_code2text(query.data)}. Всё верно?",
                             reply_markup=reply_markup)
 
     return SECOND_STAGE
