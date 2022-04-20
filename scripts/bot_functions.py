@@ -1,5 +1,5 @@
 import datetime
-from typing import Tuple, Optional, List, Union
+from typing import Tuple, Optional, List, Union, NamedTuple
 from scripts.schedule_api import get_group_seminars, get_seminar_number, get_week_parity
 
 
@@ -39,7 +39,7 @@ def format_datetime(date: datetime.datetime) -> str:
     return f"{date.day}.{date.month}.{date.year}"
 
 
-def get_nearest_date_of_weekday(current_date: datetime.datetime, target_weekday: int, return_datetime=False) -> Union[datetime.datetime, str]:
+def _get_nearest_date_of_weekday(current_date: datetime.datetime, target_weekday: int, return_datetime: bool = False) -> Union[datetime.datetime, str]:
     current_weekday, _, _ = extract_time_data(current_date)
 
     if target_weekday > current_weekday:
@@ -56,7 +56,7 @@ def get_nearest_date_of_weekday(current_date: datetime.datetime, target_weekday:
         return format_datetime(target_date)
 
 
-def get_next_seminar_weekday_by_current_weekday(weekday: int, seminar_weekdays: List[int]) -> int:
+def _get_next_seminar_weekday_by_current_weekday(weekday: int, seminar_weekdays: List[int]) -> int:
     index_of_weekday = seminar_weekdays.index(weekday)
 
     if index_of_weekday + 1 >= len(seminar_weekdays):
@@ -65,11 +65,11 @@ def get_next_seminar_weekday_by_current_weekday(weekday: int, seminar_weekdays: 
         return seminar_weekdays[index_of_weekday + 1]
 
 
-def get_next_seminar_date(current_date: datetime.datetime, seminar_weekdays: List[int]) -> datetime.datetime:
+def _get_next_seminar_date(current_date: datetime.datetime, seminar_weekdays: List[int]) -> datetime.datetime:
     current_weekday, _, _ = extract_time_data(current_date)
 
-    next_seminar_weekday = get_next_seminar_weekday_by_current_weekday(current_weekday, seminar_weekdays)
-    next_seminar_datetime = get_nearest_date_of_weekday(current_date, next_seminar_weekday)
+    next_seminar_weekday = _get_next_seminar_weekday_by_current_weekday(current_weekday, seminar_weekdays)
+    next_seminar_datetime = _get_nearest_date_of_weekday(current_date, next_seminar_weekday)
 
     return next_seminar_datetime
 
@@ -78,7 +78,7 @@ def generate_dates_of_future_seminars(date: datetime.datetime, seminar_weekdays:
     future_seminars_dates = []
 
     for weekday in seminar_weekdays:
-        future_date = get_nearest_date_of_weekday(date, weekday, return_datetime=True)
+        future_date = _get_nearest_date_of_weekday(date, weekday, return_datetime=True)
         future_seminars_dates.append(format_datetime(future_date))
 
         for factor in range(1, months + 1):
