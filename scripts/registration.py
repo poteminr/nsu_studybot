@@ -84,9 +84,9 @@ def confirm_choice_of_university(update: Update, _: CallbackContext):
     user_university_code = query.data
     user_city = university_code2city(query.data)
 
-    write_data(user_id, user_university_code, 'university_code')
-    write_data(user_id, user_city, 'city')
-    write_data(user_id, get_utc_delta(user_city), 'utc_delta')
+    write_data(user_id, 'university_code', user_university_code)
+    write_data(user_id, 'city', user_city)
+    write_data(user_id, 'utc_delta', get_utc_delta(user_city))
 
     keyboard = [
         [

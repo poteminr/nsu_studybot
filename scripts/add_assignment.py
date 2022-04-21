@@ -1,7 +1,8 @@
 from scripts.schedule_api import get_group_seminars
 from scripts.bot_functions import generate_dates_of_future_seminars, get_current_seminar, convert_utc_to_local_time
 from scripts.registration import start
-from scripts.database import read_data, write_data
+from scripts.database import read_data, write_assignment
+from scripts.assignment import Assignment
 from telegram import ReplyKeyboardMarkup, Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CommandHandler, CallbackContext, MessageHandler, Filters, ConversationHandler, \
     CallbackQueryHandler
@@ -25,10 +26,10 @@ def add_during_seminar(update: Update, context: CallbackContext):
 
     if user_group is not None:
         if len(update.message.photo) == 0:
-            is_photo = False
+            assignment_type = 'text'
             data = update.message.text.split("/add")[1].strip()
         else:
-            is_photo = True
+            assignment_type = 'photo'
             data = update.message.photo[-1]['file_id']
 
         field, seminar_weekdays = get_current_seminar(user_group, date)
@@ -37,11 +38,10 @@ def add_during_seminar(update: Update, context: CallbackContext):
             future_seminars_dates = generate_dates_of_future_seminars(date, seminar_weekdays)
             next_seminar_date = future_seminars_dates[0]
 
-            context.user_data['homework_data'] = data
-            context.user_data['is_photo'] = is_photo
-            context.user_data['next_seminar_date'] = next_seminar_date
-            context.user_data['field'] = field
-            context.user_data['future_seminars_dates'] = future_seminars_dates
+            assignment = Assignment(seminar_name=field, date=next_seminar_date, assignment_type=assignment_type,
+                                    data=data, future_seminars_dates=future_seminars_dates)
+
+            context.user_data['assignment'] = assignment
 
             keyboard = [
                 [InlineKeyboardButton(f"Добавить на следующий семинар ({next_seminar_date})",
@@ -68,26 +68,16 @@ def pick_other_dates(update: Update, context: CallbackContext):
 
     user_choice = query.data
     user_id = query.message.chat.id
-    field = context.user_data['field']
+    assignment = context.user_data['assignment']
 
     if user_choice == 'next_seminar':
-        is_photo = context.user_data['is_photo']
-        data = context.user_data['homework_data']
-        next_seminar_date = context.user_data['next_seminar_date']
-
-        write_data(user_id, data, field, next_seminar_date)
-
-        if is_photo:
-            query.edit_message_text(f'Фотография "{field}" на {next_seminar_date} успешно загружена!')
-        else:
-            query.edit_message_text(f'Текст "{field}" на {next_seminar_date} успешно загружен!')
+        write_assignment(user_id, assignment)
+        query.edit_message_text(assignment.get_text_for_reply())
 
         return ConversationHandler.END
 
     elif user_choice == 'other_dates':
-        future_seminars_dates = context.user_data['future_seminars_dates']
-
-        buttons = [InlineKeyboardButton(date, callback_data=date) for date in future_seminars_dates]
+        buttons = [InlineKeyboardButton(date, callback_data=date) for date in assignment.future_seminars_dates]
         keyboard = [buttons[k:k + 2] for k in range(0, len(buttons), 2)]
 
         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -99,20 +89,18 @@ def pick_other_dates(update: Update, context: CallbackContext):
 def upload_to_other_date(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
-    date = query.data
+
+    assignment = context.user_data['assignment']
+    assignment.date = query.data
 
     user_id = query.message.chat.id
-    field = context.user_data['field']
 
-    is_photo = context.user_data['is_photo']
-    data = context.user_data['homework_data']
+    write_assignment(user_id, assignment)
 
-    write_data(user_id, data, field, date)
-
-    if is_photo:
-        query.edit_message_text(f'Фотография "{field}" на {date} успешно загружена!')
+    if assignment.assignment_type == 'photo':
+        query.edit_message_text(f'Фотография "{assignment.seminar_name}" на {assignment.date} успешно загружена!')
     else:
-        query.edit_message_text(f'Текст "{field}" на {date} успешно загружен!')
+        query.edit_message_text(f'Текст "{assignment.seminar_name}" на {assignment.date} успешно загружен!')
 
     return ConversationHandler.END
 
@@ -163,7 +151,9 @@ def choose_time_type_of_assignment(update: Update, context: CallbackContext):
 
     field_index = query.data
     field_text = query.message.reply_markup.inline_keyboard[int(field_index)][0]['text']
-    context.user_data['user_field_choice'] = field_text
+
+    assignment = Assignment(seminar_name=field_text)
+    context.user_data['assignment'] = assignment
 
     keyboard = [
         [InlineKeyboardButton("Добавить задание на будущие занятия ", callback_data='future_seminars')],
@@ -186,24 +176,25 @@ def choose_assignment_date(update: Update, context: CallbackContext):
 
     date = convert_utc_to_local_time(query.message.date, user_utc_delta)
 
-    field_text = context.user_data['user_field_choice']
+    assignment = context.user_data['assignment']
+
     time_index = query.data
 
-    seminar_weekdays = context.user_data['seminars_weekdays'][field_text]
+    seminar_weekdays = context.user_data['seminars_weekdays'][assignment.seminar_name]
 
     keyboard = None
     if time_index == "future_seminars":
-        future_seminars_dates = generate_dates_of_future_seminars(date, seminar_weekdays)
+        assignment.future_seminars_dates = generate_dates_of_future_seminars(date, seminar_weekdays)
 
-        buttons = [InlineKeyboardButton(date, callback_data=date) for date in future_seminars_dates]
+        buttons = [InlineKeyboardButton(date, callback_data=date) for date in assignment.future_seminars_dates]
         keyboard = [buttons[k:k + 2] for k in range(0, len(buttons), 2)]
 
     elif time_index == "past_seminars":
-        if field_text not in user_data.keys():
-            query.edit_message_text(f'Нет добавленных заданий по "{field_text}"')
+        if assignment.seminar_name not in user_data.keys():
+            query.edit_message_text(f'Нет добавленных заданий по "{assignment.seminar_name}"')
             return ConversationHandler.END
 
-        added_dates = list(user_data[field_text].keys())
+        added_dates = list(user_data[assignment.seminar_name].keys())
 
         buttons = [InlineKeyboardButton(date, callback_data=date) for date in added_dates]
         keyboard = [buttons[k:k + 2] for k in range(0, len(buttons), 2)]
@@ -217,9 +208,9 @@ def choose_assignment_date(update: Update, context: CallbackContext):
 def process_seminar_date(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
+    assignment = context.user_data['assignment']
 
-    date = query.data
-    context.user_data['seminar_date'] = date
+    assignment.date = query.data
 
     query.edit_message_text(text=f"Отправьте фотографию или текст! Не забудьте добавить /add.")
 
@@ -228,29 +219,20 @@ def process_seminar_date(update: Update, context: CallbackContext):
 
 def load_assignment_to_database(update: Update, context: CallbackContext):
     user_id = update.message.chat['id']
+    assignment = context.user_data['assignment']
 
     if len(update.message.photo) == 0:
-        is_photo = False
-        message = update.message.text.split("/add")[1].strip()
+        assignment.assignment_type = 'text'
+        assignment.data = update.message.text.split("/add")[1].strip()
     else:
-        is_photo = True
-        file_id = update.message.photo[-1]['file_id']
+        assignment.assignment_type = 'photo'
+        assignment.data = update.message.photo[-1]['file_id']
 
-    field = context.user_data['user_field_choice']
-    date = context.user_data['seminar_date']
+    write_assignment(user_id, assignment)
 
-    if is_photo:
-        write_data(user_id, file_id, field, date)
-
-        update.message.reply_text(f'Фотография "{field}" успешно загружена!',
-                                  reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False,
-                                                                   resize_keyboard=True))
-    else:
-        write_data(user_id, message, field, date)
-
-        update.message.reply_text(f"Задание по '{field}' на {date} успешно загружено!",
-                                  reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False,
-                                                                   resize_keyboard=True))
+    update.message.reply_text(assignment.get_text_for_reply(),
+                              reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False,
+                                                               resize_keyboard=True))
 
     update.message.bot.delete_message(context.user_data['command_to_add_chat_id'],
                                       context.user_data['command_to_add_mes_id_1'])
