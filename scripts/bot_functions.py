@@ -1,5 +1,5 @@
 import datetime
-from typing import Tuple, Optional, List, Union, NamedTuple
+from typing import Tuple, Optional, List, Union
 from scripts.schedule_api import get_group_seminars, get_seminar_number, get_week_parity
 
 
@@ -95,15 +95,3 @@ def university_code2text(code: str) -> str:
                         "2.1": "МГУ", "2.2": "МГТУ"}
 
     return university_codes[code]
-
-
-def university_code2city(code: str) -> str:
-    city_codes = {"1": "Новосибирск", "2": "Москва"}
-
-    return city_codes[code.split(".")[0]]
-
-
-def get_utc_delta(city: str) -> int:
-    city_timezones = {"Новосибирск": 7}
-
-    return city_timezones[city]

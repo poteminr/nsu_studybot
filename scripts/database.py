@@ -50,3 +50,10 @@ def read_data(user_id: int) -> dict:
 
         if str(user_id) in data.keys():
             return data[str(user_id)]
+
+
+def read_cities_data():
+    with open('data/cities.json') as f:
+        data = json.load(f)
+
+    return data
