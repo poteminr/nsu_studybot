@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import List, Union
 from telegram import Message
+import json
 
 
 @dataclass
@@ -27,3 +28,26 @@ class Assignment:
         else:
             self.assignment_type = 'photo'
             self.data = message.photo[-1]['file_id']
+
+    def upload_to_database(self, user_id: int, database_path: str = './data.json') -> None:
+        with open(database_path) as f:
+            data = json.load(f)
+
+        user_id = str(user_id)
+        if user_id not in data.keys():
+            data[user_id] = {}
+
+        pointer = data[user_id]
+        for index, field in enumerate(self.get_path()):
+            if index == len(self.get_path()) - 1:
+                pointer.update({field: self.data})
+            else:
+                if field not in pointer.keys():
+                    pointer.update({field: {}})
+
+                pointer = pointer[field]
+
+        del pointer
+
+        with open(database_path, 'w') as f:
+            json.dump(data, f, ensure_ascii=False)

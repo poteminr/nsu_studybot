@@ -84,7 +84,7 @@ def send_assignment_to_user(update: Update, context: CallbackContext):
     if field_text in user_data.keys():
         data = user_data[field_text][field_date]
         try:
-            update.callback_query.message.reply_photo(data, caption=f"{field_text}")
+            update.callback_query.message.reply_photo(data, caption=f"'{field_text}' на {field_date}")
             query.delete_message()
 
         except telegram.error.BadRequest:

@@ -1,7 +1,7 @@
 from scripts.schedule_api import get_group_seminars
 from scripts.bot_functions import generate_dates_of_future_seminars, get_current_seminar, convert_utc_to_local_time
 from scripts.registration import start
-from scripts.database import read_data, write_assignment
+from scripts.database import read_data
 from scripts.assignment import Assignment
 from telegram import ReplyKeyboardMarkup, Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CommandHandler, CallbackContext, MessageHandler, Filters, ConversationHandler, \
@@ -38,7 +38,7 @@ def add_during_seminar(update: Update, context: CallbackContext):
             context.user_data['assignment'] = assignment
 
             keyboard = [
-                [InlineKeyboardButton(f"Добавить на следующий семинар ({next_seminar_date})",
+                [InlineKeyboardButton(f"Добавить '{seminar_name}' на следующий семинар ({next_seminar_date})",
                                       callback_data="next_seminar")],
                 [InlineKeyboardButton("Выбрать другую дату", callback_data='other_dates')],
             ]
@@ -65,7 +65,7 @@ def choose_another_date(update: Update, context: CallbackContext):
     assignment = context.user_data['assignment']
 
     if user_choice == 'next_seminar':
-        write_assignment(user_id, assignment)
+        assignment.upload_to_database(user_id)
         query.edit_message_text(assignment.get_text_for_reply())
 
         return ConversationHandler.END
@@ -89,7 +89,7 @@ def upload_to_another_date(update: Update, context: CallbackContext):
 
     user_id = query.message.chat.id
 
-    write_assignment(user_id, assignment)
+    assignment.upload_to_database(user_id)
     query.edit_message_text(assignment.get_text_for_reply())
 
     return ConversationHandler.END
@@ -212,7 +212,7 @@ def upload_assignment_to_database(update: Update, context: CallbackContext):
     assignment = context.user_data['assignment']
 
     assignment.parse_message(update.message)
-    write_assignment(user_id, assignment)
+    assignment.upload_to_database(user_id)
 
     update.message.reply_text(assignment.get_text_for_reply(),
                               reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False,
