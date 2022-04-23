@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List
+from typing import List, Union
 
 
 @dataclass
@@ -10,10 +10,10 @@ class Assignment:
     data: str = None
     future_seminars_dates: List[str] = None
 
-    def get_path(self):
+    def get_path(self) -> List[Union[str, None]]:
         return [self.seminar_name, self.date]
 
-    def get_text_for_reply(self):
+    def get_text_for_reply(self) -> str:
         if self.assignment_type == "photo":
             return f"Фотография '{self.seminar_name}' на {self.date} успешно загружена!"
         else:
