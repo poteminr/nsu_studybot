@@ -26,7 +26,6 @@ def get_group_schedule(group_number: int) -> List:
 
 
 def get_bells_schedule() -> List[Dict[str, Union[str, int]]]:
-    # return list with dicts
     method_url = 'https://table.nsu.ru/api/time'
     result = requests.get(method_url, auth=HTTPBasicAuth(API_KEY, ''))
 
@@ -42,23 +41,23 @@ def get_time_by_seminar_number(seminar_number: int) -> Tuple[str, str]:
     return start_time, end_time
 
 
-def get_seminar_number(hour: int, minute: int) -> int:
+def get_seminar_number(current_hour: int, current_minute: int) -> int:
     number = None
     seminars = get_bells_schedule()
 
-    for sem_id, seminar in enumerate(seminars):
-        start_time, end_time = seminar['begin'], seminar['end']
+    for seminar_index, seminar in enumerate(seminars):
+        start_time = seminar['begin'].split(':')
+        end_time = seminar['end'].split(':')
 
-        h_start, m_start = int(start_time.split(':')[0]), int(start_time.split(':')[1])
-        h_end, m_end = int(end_time.split(':')[0]), int(end_time.split(':')[1])
+        hour_start, minute_start = int(start_time[0]), int(start_time[1])
+        hour_end, minute_end = int(end_time[0]), int(end_time[1])
 
-        start = datetime.datetime(2021, 1, 1, h_start, m_start)
-        end = datetime.datetime(2021, 1, 1, h_end, m_end) + datetime.timedelta(minutes=5)
+        seminar_start_time = datetime.datetime(2021, 1, 1, hour_start, minute_start)
+        seminar_end_time = datetime.datetime(2021, 1, 1, hour_end, minute_end) + datetime.timedelta(minutes=5)
+        current_time = datetime.datetime(2021, 1, 1, current_hour, current_minute)
 
-        current = datetime.datetime(2021, 1, 1, hour, minute)
-
-        if (start < current) and (current < end):
-            number = sem_id + 1
+        if (seminar_start_time < current_time) and (current_time < seminar_end_time):
+            number = seminar_index + 1
             break
 
     return number
@@ -78,20 +77,20 @@ def get_group_seminars(group_number: int) -> Tuple[List[str], Dict[int, Dict[int
     seminars = {}
     seminars_weekdays = {}
 
-    for lesson in schedule:
-        if lesson['type'] in ['пр', 'лаб']:
-            weekday = lesson['weekday']
-            id_time = lesson['id_time']
-            name = lesson['name']
+    for seminar in schedule:
+        if seminar['type'] in ['пр', 'лаб']:
+            weekday = seminar['weekday']
+            id_time = seminar['id_time']
+            seminar_name = seminar['name']
 
-            if name not in seminars_weekdays.keys():
-                seminars_weekdays[name] = []
+            if seminar_name not in seminars_weekdays.keys():
+                seminars_weekdays[seminar_name] = []
 
             if weekday not in seminars.keys():
                 seminars[weekday] = {}
 
-            seminars[weekday][id_time] = name
-            seminars_weekdays[name].append(weekday)
-            list_of_all_seminars.append(name)
+            seminars[weekday][id_time] = seminar_name
+            seminars_weekdays[seminar_name].append(weekday)
+            list_of_all_seminars.append(seminar_name)
 
     return list(set(list_of_all_seminars)), seminars, seminars_weekdays
