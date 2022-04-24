@@ -1,5 +1,5 @@
 import json
-from typing import Union
+from typing import Union, Optional
 
 
 def write_data(user_id: int, field: str, value: Union[str, int]) -> None:
@@ -17,7 +17,7 @@ def write_data(user_id: int, field: str, value: Union[str, int]) -> None:
         json.dump(data, f, ensure_ascii=False)
 
 
-def read_data(user_id: int) -> Union[dict, None]:
+def read_data(user_id: int) -> Optional[dict]:
     with open('./data.json') as f:
         data = json.load(f)
 

@@ -18,21 +18,21 @@ def extract_time_data(date: datetime.datetime) -> Tuple[int, int, int]:
     return weekday, hour, minute
 
 
-def get_current_seminar(user_group: int, date: datetime.datetime) -> Tuple[Optional[str], List[int]]:
-    current_subject = None
+def get_current_seminar(user_group: int, date: datetime.datetime) -> Tuple[Optional[str], Optional[List[int]]]:
+    current_seminar_name = None
     current_seminar_weekdays = None
 
-    weekday, hour, minute = extract_time_data(date)
+    current_weekday, current_hour, current_minute = extract_time_data(date)
 
-    if weekday % 7 != 0:
+    if current_weekday % 7 != 0:
         _, schedule, seminar_weekdays = get_group_seminars(user_group)
-        seminar_number = get_seminar_number(hour, minute)
+        seminar_number = get_seminar_number(current_hour, current_minute)
 
-        if seminar_number in schedule[weekday].keys():
-            current_subject = schedule[weekday][seminar_number]
-            current_seminar_weekdays = seminar_weekdays[current_subject]
+        if seminar_number in schedule[current_weekday].keys():
+            current_seminar_name = schedule[current_weekday][seminar_number]
+            current_seminar_weekdays = seminar_weekdays[current_seminar_name]
 
-    return current_subject, current_seminar_weekdays
+    return current_seminar_name, current_seminar_weekdays
 
 
 def format_datetime(date: datetime.datetime) -> str:
