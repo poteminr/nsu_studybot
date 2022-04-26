@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Union
+from typing import List, Union, Optional
 from telegram import Message
 import json
 
@@ -9,25 +9,46 @@ class Assignment:
     seminar_name: str = None
     date: str = None
     assignment_type: str = None
-    data: str = None
+    text_data: str = None
+    photo_data: str = None
     future_seminars_dates: List[str] = None
 
     def get_path(self) -> List[Union[str, None]]:
         return [self.seminar_name, self.date]
 
     def get_text_for_reply(self) -> str:
-        if self.assignment_type == "photo":
+        if self.assignment_type == 'photo':
             return f"Фотография '{self.seminar_name}' на {self.date} успешно загружена!"
         else:
             return f"Задание по '{self.seminar_name}' на {self.date} успешно загружено!"
 
+    @staticmethod
+    def _parse_text(text: str) -> Optional[str]:
+        text = text.strip()
+        if text != "/add":
+            return text.split("/add")[1]
+        else:
+            return None
+
     def parse_message(self, message: Message) -> None:
         if len(message.photo) == 0:
             self.assignment_type = 'text'
-            self.data = message.text.split("/add")[1].strip()
+            self.text_data = self._parse_text(message.text)
         else:
             self.assignment_type = 'photo'
-            self.data = message.photo[-1]['file_id']
+            self.photo_data = message.photo[-1]['file_id']
+            if message.caption is not None:
+                self.text_data = self._parse_text(message.caption)
+
+    def _create_dict_with_data(self) -> dict:
+        if all([self.photo_data, self.text_data]):
+            return {"photo": self.photo_data, "text": self.text_data}
+
+        elif self.photo_data is not None:
+            return {"photo": self.photo_data}
+
+        elif self.text_data is not None:
+            return {"text": self.text_data}
 
     def upload_to_database(self, user_id: int, database_path: str = './data.json') -> None:
         with open(database_path) as f:
@@ -40,7 +61,8 @@ class Assignment:
         pointer = data[user_id]
         for index, field in enumerate(self.get_path()):
             if index == len(self.get_path()) - 1:
-                pointer.update({field: self.data})
+
+                pointer.update({field: self._create_dict_with_data()})
             else:
                 if field not in pointer.keys():
                     pointer.update({field: {}})

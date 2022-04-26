@@ -2,7 +2,6 @@ from scripts.database import read_data
 from scripts.schedule_api import get_group_seminars
 from scripts.registration import start
 import datetime
-import telegram.error
 from telegram import ReplyKeyboardMarkup, Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     CommandHandler,
@@ -83,15 +82,20 @@ def send_assignment_to_user(update: Update, context: CallbackContext):
 
     if field_text in user_data.keys():
         data = user_data[field_text][field_date]
-        try:
-            update.callback_query.message.reply_photo(data, caption=f"'{field_text}' на {field_date}")
+        if 'photo' in data.keys():
+            if 'text' in data.keys():
+                update.callback_query.message.reply_photo(data['photo'], caption=f"'{field_text}' на {field_date}"
+                                                                                 f"\n\nТекст: {data['text']}")
+            else:
+                update.callback_query.message.reply_photo(data['photo'], caption=f"'{field_text}' на {field_date}")
+
             query.delete_message()
 
-        except telegram.error.BadRequest:
-            query.edit_message_text(text=f"{field_text} на {field_date}: \n{data}")
+        else:
+            query.edit_message_text(text=f"{field_text} на {field_date}:\n{data['text']}")
 
     else:
-        query.edit_message_text(text=f'Данные по предмету: "{field_text}" отсутствуют.')
+        query.edit_message_text(text=f'Данные по предмету "{field_text}" отсутствуют.')
 
     update.callback_query.message.bot.delete_message(context.user_data['command_to_view_chat_id'],
                                                      context.user_data['command_to_view_message_id'])

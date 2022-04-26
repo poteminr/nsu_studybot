@@ -96,7 +96,7 @@ def upload_to_another_date(update: Update, context: CallbackContext):
 
 
 conv_handler_add_assignment_during_seminar = ConversationHandler(
-    entry_points=[MessageHandler(Filters.photo & Filters.caption('^/add$'), add_during_seminar),
+    entry_points=[MessageHandler(Filters.photo & Filters.caption_regex(r'/add'), add_during_seminar),
                   CommandHandler("add", add_during_seminar)],
     states={
         PICK_DATE: [CallbackQueryHandler(choose_another_date)],
@@ -231,7 +231,7 @@ conv_handler_add_assignment_by_hand = ConversationHandler(
         TIME_TYPE: [CallbackQueryHandler(choose_assignment_date)],
 
         DATE: [CallbackQueryHandler(process_assignment_date),
-               MessageHandler(Filters.photo & Filters.caption('^/add$'), upload_assignment_to_database),
+               MessageHandler(Filters.photo & Filters.caption_regex(r'/add'), upload_assignment_to_database),
                CommandHandler("add", upload_assignment_to_database)
                ]
     },
