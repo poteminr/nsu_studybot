@@ -36,7 +36,7 @@ def get_current_seminar(user_group: int, date: datetime.datetime) -> Tuple[Optio
 
 
 def format_datetime(date: datetime.datetime) -> str:
-    return f"{date.day}.{date.month}.{date.year}"
+    return f'{date:%d.%m.%Y}'
 
 
 def _get_nearest_date_of_weekday(current_date: datetime.datetime, target_weekday: int, return_datetime: bool = False) -> Union[datetime.datetime, str]:

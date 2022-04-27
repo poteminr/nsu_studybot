@@ -28,27 +28,25 @@ def view_assignment(update: Update, context: CallbackContext):
         keyboard = [[InlineKeyboardButton(seminar_name, callback_data=str(ind))] for ind, seminar_name in
                     enumerate(seminars)]
 
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        update.message.reply_text("Выберите необходимый предмет", reply_markup=reply_markup)
+        update.message.reply_text("Выберите необходимый предмет", reply_markup=InlineKeyboardMarkup(keyboard))
 
         return DATE
-
     else:
         update.message.reply_text(f'Необходимо ввести номер группы. (/group номер)',
                                   reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False,
                                                                    resize_keyboard=True))
+        return ConversationHandler.END
 
 
 def pick_seminar_date_from_list(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
-    user_id = query.message.chat.id
 
+    user_id = query.message.chat.id
     user_data = read_data(user_id)
 
     field_index = query.data
     seminar_name = query.message.reply_markup.inline_keyboard[int(field_index)][0]['text']
-
     context.user_data['user_seminar_choice'] = seminar_name
 
     if seminar_name not in user_data.keys():
@@ -62,8 +60,7 @@ def pick_seminar_date_from_list(update: Update, context: CallbackContext):
 
         keyboard = [[InlineKeyboardButton(date, callback_data=date)] for date in seminar_dates_with_assignments]
 
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        query.edit_message_text(text="Выберите дату занятия.", reply_markup=reply_markup)
+        query.edit_message_text(text="Выберите дату занятия.", reply_markup=InlineKeyboardMarkup(keyboard))
 
         return ASSIGNMENT
 
