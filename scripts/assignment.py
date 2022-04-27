@@ -13,9 +13,6 @@ class Assignment:
     photo_data: str = None
     future_seminars_dates: List[str] = None
 
-    def get_path(self) -> List[Union[str, None]]:
-        return [self.seminar_name, self.date]
-
     def get_text_for_reply(self) -> str:
         if self.assignment_type == 'photo':
             return f"Фотография '{self.seminar_name}' на {self.date} успешно загружена!"
@@ -50,6 +47,9 @@ class Assignment:
         elif self.text_data is not None:
             return {"text": self.text_data}
 
+    def _get_path(self) -> List[Optional[str]]:
+        return [self.seminar_name, self.date]
+
     def upload_to_database(self, user_id: int, database_path: str = './data.json') -> None:
         with open(database_path) as f:
             data = json.load(f)
@@ -59,9 +59,8 @@ class Assignment:
             data[user_id] = {}
 
         pointer = data[user_id]
-        for index, field in enumerate(self.get_path()):
-            if index == len(self.get_path()) - 1:
-
+        for ind, field in enumerate(self._get_path()):
+            if ind == len(self._get_path()) - 1:
                 pointer.update({field: self._create_dict_with_data()})
             else:
                 if field not in pointer.keys():
