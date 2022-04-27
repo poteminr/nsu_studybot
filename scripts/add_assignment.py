@@ -7,7 +7,7 @@ from telegram import ReplyKeyboardMarkup, Update, InlineKeyboardButton, InlineKe
 from telegram.ext import CommandHandler, CallbackContext, MessageHandler, Filters, ConversationHandler, \
     CallbackQueryHandler
 
-reply_keyboard = [['Просмотреть домашние задания'], ['Добавить задание вручную']]
+reply_keyboard = [['Просмотреть домашние задания'], ['Добавить/Редактировать задание вручную']]
 
 FIELD, TIME_TYPE, DATE = range(3)
 PICK_DATE, CHOOSE_ANOTHER_DATE = range(2)
@@ -169,6 +169,7 @@ def choose_assignment_date(update: Update, context: CallbackContext):
     assignment = context.user_data['assignment']
 
     assignment_time_type = query.data
+    context.user_data['assignment_time_type'] = assignment_time_type
 
     seminar_weekdays = context.user_data['seminars_weekdays'][assignment.seminar_name]
 
@@ -197,12 +198,45 @@ def choose_assignment_date(update: Update, context: CallbackContext):
 
 def process_assignment_date(update: Update, context: CallbackContext):
     query = update.callback_query
+
     query.answer()
     assignment = context.user_data['assignment']
-
     assignment.date = query.data
 
-    query.edit_message_text(text=f"Отправьте фотографию или текст! Не забудьте добавить /add.")
+    if context.user_data['assignment_time_type'] == 'future_seminars':
+        bot_reply_message = query.edit_message_text(text=f"Отправьте фотографию или текст!\n1) Используйте /add как подпись к фотографии "
+                                     f"\n2) /add текст")
+
+    else:
+        user_id = query.message.chat['id']
+        user_data = read_data(user_id)
+
+        data = user_data[assignment.seminar_name][assignment.date]
+
+        if 'photo' in data.keys():
+            if 'text' in data.keys():
+                bot_reply_message = update.callback_query.message.reply_photo(data['photo'], caption=f"'{assignment.seminar_name}' на {assignment.date}"
+                                                                                 f"\n\nТекст: {data['text']}"
+                                                                                 f"\n\nОтправьте фотографию или текст, чтобы заменить задание!"
+                                                                                 f"\n1) Используйте /add как подпись к фотографии "
+                                                                                 f"\n2) /add текст"
+                                                          )
+            else:
+                bot_reply_message = update.callback_query.message.reply_photo(data['photo'], caption=f"'{assignment.seminar_name}' на {assignment.date}"
+                                                                                 f"\n\nОтправьте фотографию или текст, чтобы заменить задание!"
+                                                                                 f"\n1) Используйте /add как подпись к фотографии "
+                                                                                 f"\n2) /add текст"
+                                                          )
+
+            query.delete_message()
+
+        else:
+            bot_reply_message = query.edit_message_text(text=f"{assignment.seminar_name} на {assignment.date}:\n{data['text']} "
+                                         f"\n\nОтправьте фотографию или текст, чтобы заменить задание!"
+                                         f"\n1) Используйте /add как подпись к фотографии "
+                                         f"\n2) /add текст")
+
+    context.user_data['bot_reply_message_id'] = bot_reply_message['message_id']
 
     return DATE
 
@@ -221,11 +255,16 @@ def upload_assignment_to_database(update: Update, context: CallbackContext):
     update.message.bot.delete_message(context.user_data['command_to_add_chat_id'],
                                       context.user_data['command_to_add_mes_id_1'])
 
+    update.message.bot.delete_message(context.user_data['command_to_add_chat_id'],
+                                      context.user_data['bot_reply_message_id'])
+
+
+
     return ConversationHandler.END
 
 
 conv_handler_add_assignment_by_hand = ConversationHandler(
-    entry_points=[MessageHandler(Filters.regex('^Добавить задание вручную$'), add_assignment)],
+    entry_points=[MessageHandler(Filters.regex('^Добавить/Редактировать задание вручную$'), add_assignment)],
     states={
         FIELD: [CallbackQueryHandler(choose_assignment_time_type)],
         TIME_TYPE: [CallbackQueryHandler(choose_assignment_date)],

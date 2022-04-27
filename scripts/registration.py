@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 CITY, UNIVERSITY, CONFIRMATION = range(3)
 
-reply_keyboard = [['Просмотреть домашние задания'], ['Добавить задание вручную']]
+reply_keyboard = [['Просмотреть домашние задания'], ['Добавить/Редактировать задание вручную']]
 
 
 def start(update: Update, _: CallbackContext):

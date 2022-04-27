@@ -26,7 +26,7 @@ class Assignment:
     def _parse_text(text: str) -> Optional[str]:
         text = text.strip()
         if text != "/add":
-            return text.split("/add")[1]
+            return text.split("/add")[1].strip()
         else:
             return None
 
