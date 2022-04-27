@@ -8,6 +8,7 @@ from telegram.ext import CommandHandler, CallbackContext, MessageHandler, Filter
     CallbackQueryHandler
 
 reply_keyboard = [['Просмотреть домашние задания'], ['Добавить/Редактировать задание вручную']]
+reply_markup_keyboard = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False, resize_keyboard=True)
 
 FIELD, TIME_TYPE, DATE = range(3)
 PICK_DATE, CHOOSE_ANOTHER_DATE = range(2)
@@ -20,8 +21,6 @@ def add_during_seminar(update: Update, context: CallbackContext):
     user_utc_delta = user_data['utc_delta']
 
     date = convert_utc_to_local_time(update.message.date, user_utc_delta)
-
-    reply_markup_keyboard = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False, resize_keyboard=True)
 
     if user_group is not None:
         seminar_name, seminar_weekdays = get_current_seminar(user_group, date)
@@ -129,8 +128,7 @@ def add_assignment(update: Update, context: CallbackContext):
 
     else:
         update.message.reply_text(f'Необходимо ввести номер группы. (/group номер)',
-                                  reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False,
-                                                                   resize_keyboard=True))
+                                  reply_markup=reply_markup_keyboard)
 
 
 def choose_assignment_time_type(update: Update, context: CallbackContext):
@@ -245,9 +243,7 @@ def upload_assignment_to_database(update: Update, context: CallbackContext):
     assignment.parse_message(update.message)
     assignment.upload_to_database(user_id)
 
-    update.message.reply_text(assignment.get_text_for_reply(),
-                              reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False,
-                                                               resize_keyboard=True))
+    update.message.reply_text(assignment.get_text_for_reply(), reply_markup=reply_markup_keyboard)
 
     update.message.bot.delete_message(update.message.chat['id'],
                                       context.user_data['command_to_add_mes_id_1'])

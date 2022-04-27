@@ -68,8 +68,8 @@ def pick_seminar_date_from_list(update: Update, context: CallbackContext):
 def send_assignment_to_user(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
-    user_id = query.message.chat.id
 
+    user_id = query.message.chat.id
     user_data = read_data(user_id)
 
     seminar_date = query.data
