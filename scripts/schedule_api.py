@@ -93,4 +93,6 @@ def get_group_seminars(group_number: int) -> Tuple[List[str], Dict[int, Dict[int
             seminars_weekdays[seminar_name].append(weekday)
             list_of_all_seminars.append(seminar_name)
 
-    return list(set(list_of_all_seminars)), seminars, seminars_weekdays
+    list_of_all_seminars = sorted(list(set(list_of_all_seminars)))
+    
+    return list_of_all_seminars, seminars, seminars_weekdays

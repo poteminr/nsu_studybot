@@ -117,7 +117,6 @@ def add_assignment(update: Update, context: CallbackContext):
         context.user_data['command_to_add_chat_id'] = update.message.chat['id']
 
         seminars, _, seminars_weekdays = get_group_seminars(user_group)
-        seminars = sorted(seminars)
 
         context.user_data['seminars_weekdays'] = seminars_weekdays
 
