@@ -25,8 +25,8 @@ def view_assignment(update: Update, context: CallbackContext):
 
         seminars, _, _ = get_group_seminars(user_group)
 
-        keyboard = [[InlineKeyboardButton(seminar_name, callback_data=str(ind))] for ind, seminar_name in
-                    enumerate(seminars)]
+        keyboard = [[InlineKeyboardButton(seminar_name, callback_data=str(seminar_index))]
+                    for seminar_index, seminar_name in enumerate(seminars)]
 
         update.message.reply_text("Выберите необходимый предмет", reply_markup=InlineKeyboardMarkup(keyboard))
 
@@ -45,8 +45,8 @@ def pick_seminar_date_from_list(update: Update, context: CallbackContext):
     user_id = query.message.chat.id
     user_data = read_data(user_id)
 
-    field_index = query.data
-    seminar_name = query.message.reply_markup.inline_keyboard[int(field_index)][0]['text']
+    seminar_index = query.data
+    seminar_name = query.message.reply_markup.inline_keyboard[int(seminar_index)][0]['text']
     context.user_data['user_seminar_choice'] = seminar_name
 
     if seminar_name not in user_data.keys():
