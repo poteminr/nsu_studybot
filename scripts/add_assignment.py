@@ -65,7 +65,7 @@ def choose_another_date(update: Update, context: CallbackContext):
 
     if user_choice == 'next_seminar':
         assignment.upload_to_database(user_id)
-        query.edit_message_text(assignment.get_text_for_reply())
+        query.edit_message_text(assignment.get_message_after_uploading())
 
         return ConversationHandler.END
 
@@ -89,7 +89,7 @@ def upload_to_another_date(update: Update, context: CallbackContext):
     user_id = query.message.chat.id
 
     assignment.upload_to_database(user_id)
-    query.edit_message_text(assignment.get_text_for_reply())
+    query.edit_message_text(assignment.get_message_after_uploading())
 
     return ConversationHandler.END
 
@@ -215,12 +215,14 @@ def process_assignment_date(update: Update, context: CallbackContext):
                                                                                  f"\n\nТекст: {data['text']}"
                                                                                  f"\n\nОтправьте фотографию или текст, чтобы заменить задание!"
                                                                                  f"\n1) Используйте /add как подпись к фотографии "
-                                                                                 f"\n2) /add текст")
+                                                                                 f"\n2) /add текст"
+                                                                                 f"\n3) /delete для удаления")
             else:
                 bot_reply_message = update.callback_query.message.reply_photo(data['photo'], caption=f"'{assignment.seminar_name}' на {assignment.date}"
                                                                                  f"\n\nОтправьте фотографию или текст, чтобы заменить задание!"
                                                                                  f"\n1) Используйте /add как подпись к фотографии "
-                                                                                 f"\n2) /add текст")
+                                                                                 f"\n2) /add текст"
+                                                                                 f"\n3) /delete для удаления")
 
             query.delete_message()
 
@@ -229,11 +231,28 @@ def process_assignment_date(update: Update, context: CallbackContext):
                                                              f"\n{data['text']} " 
                                                              f"\n\nОтправьте фотографию или текст, чтобы заменить задание!"
                                                              f"\n1) Используйте /add как подпись к фотографии "
-                                                             f"\n2) /add текст")
+                                                             f"\n2) /add текст"
+                                                             f"\n3) /delete для удаления")
 
     context.user_data['bot_reply_message_id'] = bot_reply_message['message_id']
 
     return DATE
+
+
+def remove_assignment_from_database(update: Update, context: CallbackContext):
+    user_id = update.message.chat['id']
+    assignment = context.user_data['assignment']
+
+    assignment.remove_from_database(user_id)
+    update.message.reply_text(assignment.get_message_after_deleting(), reply_markup=reply_markup_keyboard)
+
+    update.message.bot.delete_message(update.message.chat['id'],
+                                      context.user_data['command_to_add_mes_id_1'])
+
+    update.message.bot.delete_message(update.message.chat['id'],
+                                      context.user_data['bot_reply_message_id'])
+
+    return ConversationHandler.END
 
 
 def upload_assignment_to_database(update: Update, context: CallbackContext):
@@ -243,7 +262,7 @@ def upload_assignment_to_database(update: Update, context: CallbackContext):
     assignment.parse_message(update.message)
     assignment.upload_to_database(user_id)
 
-    update.message.reply_text(assignment.get_text_for_reply(), reply_markup=reply_markup_keyboard)
+    update.message.reply_text(assignment.get_message_after_uploading(), reply_markup=reply_markup_keyboard)
 
     update.message.bot.delete_message(update.message.chat['id'],
                                       context.user_data['command_to_add_mes_id_1'])
@@ -261,6 +280,7 @@ conv_handler_add_assignment_by_hand = ConversationHandler(
         TIME_TYPE: [CallbackQueryHandler(choose_assignment_date)],
 
         DATE: [CallbackQueryHandler(process_assignment_date),
+               CommandHandler("delete", remove_assignment_from_database),
                MessageHandler(Filters.photo & Filters.caption_regex(r'/add'), upload_assignment_to_database),
                CommandHandler("add", upload_assignment_to_database)
                ]

@@ -13,11 +13,14 @@ class Assignment:
     photo_data: str = None
     future_seminars_dates: List[str] = None
 
-    def get_text_for_reply(self) -> str:
+    def get_message_after_uploading(self) -> str:
         if self.assignment_type == 'photo':
             return f"Фотография '{self.seminar_name}' на {self.date} успешно загружена!"
         else:
             return f"Задание по '{self.seminar_name}' на {self.date} успешно загружено!"
+
+    def get_message_after_deleting(self) -> str:
+        return f"Задание по '{self.seminar_name}' на {self.date} успешно удалено!"
 
     @staticmethod
     def _parse_text(text: str) -> Optional[str]:
@@ -69,6 +72,20 @@ class Assignment:
                 pointer = pointer[field]
 
         del pointer
+
+        with open(database_path, 'w') as f:
+            json.dump(data, f, ensure_ascii=False)
+
+    def remove_from_database(self, user_id: int, database_path: str = './data.json'):
+        with open(database_path) as f:
+            data = json.load(f)
+
+        user_id = str(user_id)
+
+        if len(data[user_id][self.seminar_name].keys()) == 1:
+            data[user_id].pop(self.seminar_name)
+        else:
+            data[user_id][self.seminar_name].pop(self.date)
 
         with open(database_path, 'w') as f:
             json.dump(data, f, ensure_ascii=False)
