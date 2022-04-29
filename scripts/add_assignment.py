@@ -10,7 +10,7 @@ from telegram.ext import CommandHandler, CallbackContext, MessageHandler, Filter
 reply_keyboard = [['Просмотреть домашние задания'], ['Добавить/Редактировать задание вручную']]
 reply_markup_keyboard = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False, resize_keyboard=True)
 
-FIELD, TIME_TYPE, DATE = range(3)
+FIELD, TIME_TYPE, DATE, ACTION = range(4)
 PICK_DATE, CHOOSE_ANOTHER_DATE = range(2)
 
 
@@ -200,8 +200,9 @@ def process_assignment_date(update: Update, context: CallbackContext):
     assignment.date = query.data
 
     if context.user_data['assignment_time_type'] == 'future_seminars':
-        bot_reply_message = query.edit_message_text(text=f"Отправьте фотографию или текст!\n1) Используйте /add как подпись к фотографии "
-                                     f"\n2) /add текст")
+        bot_reply_message = query.edit_message_text(
+            text=f"Отправьте фотографию или текст!\n1) Используйте /add как подпись к фотографии "
+                 f"\n2) /add текст")
 
     else:
         user_id = query.message.chat['id']
@@ -209,48 +210,55 @@ def process_assignment_date(update: Update, context: CallbackContext):
 
         data = user_data[assignment.seminar_name][assignment.date]
 
+        keyboard = [[InlineKeyboardButton('Удалить запись', callback_data='delete')]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
         if 'photo' in data.keys():
             if 'text' in data.keys():
-                bot_reply_message = update.callback_query.message.reply_photo(data['photo'], caption=f"'{assignment.seminar_name}' на {assignment.date}"
-                                                                                 f"\n\nТекст: {data['text']}"
-                                                                                 f"\n\nОтправьте фотографию или текст, чтобы заменить задание!"
-                                                                                 f"\n1) Используйте /add как подпись к фотографии "
-                                                                                 f"\n2) /add текст"
-                                                                                 f"\n3) /delete для удаления")
+                bot_reply_message = update.callback_query.message.reply_photo(data['photo'],
+                                                                              caption=f"'{assignment.seminar_name}' на {assignment.date}"
+                                                                                      f"\n\nТекст: {data['text']}"
+                                                                                      f"\n\nОтправьте фотографию или текст, чтобы заменить задание!"
+                                                                                      f"\n1) Используйте /add как подпись к фотографии "
+                                                                                      f"\n2) /add текст"
+                                                                                      f"\n3) /delete для удаления",
+                                                                              reply_markup=reply_markup)
             else:
-                bot_reply_message = update.callback_query.message.reply_photo(data['photo'], caption=f"'{assignment.seminar_name}' на {assignment.date}"
-                                                                                 f"\n\nОтправьте фотографию или текст, чтобы заменить задание!"
-                                                                                 f"\n1) Используйте /add как подпись к фотографии "
-                                                                                 f"\n2) /add текст"
-                                                                                 f"\n3) /delete для удаления")
+                bot_reply_message = update.callback_query.message.reply_photo(data['photo'],
+                                                                              caption=f"'{assignment.seminar_name}' на {assignment.date}"
+                                                                                      f"\n\nОтправьте фотографию или текст, чтобы заменить задание!"
+                                                                                      f"\n1) Используйте /add как подпись к фотографии "
+                                                                                      f"\n2) /add текст"
+                                                                                      f"\n3) /delete для удаления",
+                                                                              reply_markup=reply_markup)
 
             query.delete_message()
 
         else:
             bot_reply_message = query.edit_message_text(text=f"{assignment.seminar_name} на {assignment.date}:"
-                                                             f"\n{data['text']} " 
+                                                             f"\n{data['text']} "
                                                              f"\n\nОтправьте фотографию или текст, чтобы заменить задание!"
                                                              f"\n1) Используйте /add как подпись к фотографии "
                                                              f"\n2) /add текст"
-                                                             f"\n3) /delete для удаления")
+                                                             f"\n3) /delete для удаления", reply_markup=reply_markup)
 
     context.user_data['bot_reply_message_id'] = bot_reply_message['message_id']
 
-    return DATE
+    return ACTION
 
 
 def remove_assignment_from_database(update: Update, context: CallbackContext):
-    user_id = update.message.chat['id']
+    query = update.callback_query
+    query.answer()
+
+    user_id = query.message.chat['id']
     assignment = context.user_data['assignment']
 
     assignment.remove_from_database(user_id)
-    update.message.reply_text(assignment.get_message_after_deleting(), reply_markup=reply_markup_keyboard)
+    query.edit_message_text(assignment.get_message_after_deleting())
 
-    update.message.bot.delete_message(update.message.chat['id'],
-                                      context.user_data['command_to_add_mes_id_1'])
-
-    update.message.bot.delete_message(update.message.chat['id'],
-                                      context.user_data['bot_reply_message_id'])
+    query.message.bot.delete_message(query.message.chat['id'],
+                                     context.user_data['command_to_add_mes_id_1'])
 
     return ConversationHandler.END
 
@@ -279,11 +287,13 @@ conv_handler_add_assignment_by_hand = ConversationHandler(
         FIELD: [CallbackQueryHandler(choose_assignment_time_type)],
         TIME_TYPE: [CallbackQueryHandler(choose_assignment_date)],
 
-        DATE: [CallbackQueryHandler(process_assignment_date),
-               CommandHandler("delete", remove_assignment_from_database),
-               MessageHandler(Filters.photo & Filters.caption_regex(r'/add'), upload_assignment_to_database),
-               CommandHandler("add", upload_assignment_to_database)
-               ]
+        DATE: [CallbackQueryHandler(process_assignment_date)],
+
+        ACTION: [
+            CallbackQueryHandler(remove_assignment_from_database, pattern='delete'),
+            MessageHandler(Filters.photo & Filters.caption_regex(r'/add'), upload_assignment_to_database),
+            CommandHandler("add", upload_assignment_to_database)
+        ]
     },
     fallbacks=[CommandHandler('start', start)],
 )
