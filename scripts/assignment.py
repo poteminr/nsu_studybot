@@ -51,7 +51,7 @@ class Assignment:
             return {"text": self.text_data}
 
     def _get_path(self) -> List[Optional[str]]:
-        return [self.seminar_name, self.date]
+        return ['assignments', self.seminar_name, self.date]
 
     def upload_to_database(self, user_id: int, database_path: str = './data.json') -> None:
         with open(database_path) as f:
@@ -82,10 +82,10 @@ class Assignment:
 
         user_id = str(user_id)
 
-        if len(data[user_id][self.seminar_name].keys()) == 1:
-            data[user_id].pop(self.seminar_name)
+        if len(data[user_id]['assignments'][self.seminar_name].keys()) == 1:
+            data[user_id]['assignments'].pop(self.seminar_name)
         else:
-            data[user_id][self.seminar_name].pop(self.date)
+            data[user_id]['assignments'][self.seminar_name].pop(self.date)
 
         with open(database_path, 'w') as f:
             json.dump(data, f, ensure_ascii=False)

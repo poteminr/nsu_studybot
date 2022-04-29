@@ -43,7 +43,7 @@ def pick_seminar_date_from_list(update: Update, context: CallbackContext):
     query.answer()
 
     user_id = query.message.chat.id
-    user_data = read_data(user_id)
+    user_data = read_data(user_id)['assignments']
 
     seminar_index = query.data
     seminar_name = query.message.reply_markup.inline_keyboard[int(seminar_index)][0]['text']
@@ -51,6 +51,9 @@ def pick_seminar_date_from_list(update: Update, context: CallbackContext):
 
     if seminar_name not in user_data.keys():
         query.edit_message_text(text=f'Данные по предмету "{seminar_name}" отсутствуют')
+
+        update.callback_query.message.bot.delete_message(user_id,
+                                                         context.user_data['command_to_view_message_id'])
 
         return ConversationHandler.END
 
@@ -70,7 +73,7 @@ def send_assignment_to_user(update: Update, context: CallbackContext):
     query.answer()
 
     user_id = query.message.chat.id
-    user_data = read_data(user_id)
+    user_data = read_data(user_id)['assignments']
 
     seminar_date = query.data
     seminar_name = context.user_data['user_seminar_choice']
@@ -92,7 +95,7 @@ def send_assignment_to_user(update: Update, context: CallbackContext):
     else:
         query.edit_message_text(text=f'Данные по предмету "{seminar_name}" отсутствуют')
 
-    update.callback_query.message.bot.delete_message(query.message.chat.id,
+    update.callback_query.message.bot.delete_message(user_id,
                                                      context.user_data['command_to_view_message_id'])
 
     return ConversationHandler.END
@@ -106,3 +109,20 @@ conv_handler_view_assignment = ConversationHandler(
         },
         fallbacks=[CommandHandler('start', start)],
     )
+
+
+def view_assignment_for_specific_date(update: Update, _: CallbackContext):
+    # user_id = update.message.chat['id']
+    # message = update.message.text
+    #
+    # date = message.split('/view')[1].strip()
+    #
+    # user_data = read_data(user_id)['assignments']
+    # text = ""
+    # for seminar_name in user_data.keys():
+    #     if date in user_data[seminar_name].keys():
+    #         text += user_data[seminar_name][date]['text']
+    #
+    # update.message.reply_text(text)
+
+    raise NotImplemented

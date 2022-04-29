@@ -177,12 +177,12 @@ def choose_assignment_date(update: Update, context: CallbackContext):
         keyboard = [buttons[k:k + 2] for k in range(0, len(buttons), 2)]
 
     elif assignment_time_type == "past_seminars":
-        if assignment.seminar_name not in user_data.keys():
+        if assignment.seminar_name not in user_data['assignments'].keys():
             query.edit_message_text(f'Нет добавленных заданий по "{assignment.seminar_name}"')
             query.message.bot.delete_message(user_id, context.user_data['command_to_add_mes_id_1'])
             return ConversationHandler.END
 
-        dates_of_added_assignments = list(user_data[assignment.seminar_name].keys())
+        dates_of_added_assignments = list(user_data['assignments'][assignment.seminar_name].keys())
 
         buttons = [InlineKeyboardButton(date, callback_data=date) for date in dates_of_added_assignments]
         keyboard = [buttons[k:k + 2] for k in range(0, len(buttons), 2)]
@@ -209,7 +209,7 @@ def process_assignment_date(update: Update, context: CallbackContext):
         user_id = query.message.chat['id']
         user_data = read_data(user_id)
 
-        data = user_data[assignment.seminar_name][assignment.date]
+        data = user_data['assignments'][assignment.seminar_name][assignment.date]
 
         keyboard = [[InlineKeyboardButton('Удалить запись', callback_data='delete')]]
         reply_markup = InlineKeyboardMarkup(keyboard)

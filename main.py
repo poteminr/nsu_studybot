@@ -1,6 +1,6 @@
 from scripts.private_keys import import_private_keys
 from scripts.registration import init_user_group, conv_handler_pick_university
-from scripts.view_assignment import conv_handler_view_assignment
+from scripts.view_assignment import conv_handler_view_assignment, view_assignment_for_specific_date
 from scripts.add_assignment import conv_handler_add_assignment_by_hand, conv_handler_add_assignment_during_seminar
 import logging
 from telegram import Update
@@ -38,6 +38,7 @@ def main():
     dispatcher.add_handler(conv_handler_add_assignment_during_seminar)
 
     dispatcher.add_handler(CommandHandler("restart", restart))
+    dispatcher.add_handler(CommandHandler("view", view_assignment_for_specific_date))
 
     updater.start_polling()
 
