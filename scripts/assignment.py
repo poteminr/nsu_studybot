@@ -76,7 +76,7 @@ class Assignment:
         with open(database_path, 'w') as f:
             json.dump(data, f, ensure_ascii=False)
 
-    def remove_from_database(self, user_id: int, database_path: str = './data.json'):
+    def remove_from_database(self, user_id: int, database_path: str = './data.json') -> None:
         with open(database_path) as f:
             data = json.load(f)
 
