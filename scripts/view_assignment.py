@@ -14,7 +14,8 @@ from telegram.ext import (
 
 DATE, ASSIGNMENT = range(2)
 
-reply_keyboard = [['Просмотреть домашние задания'], ['Добавить/Редактировать задание вручную']]
+reply_keyboard = [['Просмотреть домашние задания'],
+                  ['Добавить/Редактировать задание вручную']]
 
 
 def view_assignment(update: Update, context: CallbackContext):
@@ -119,6 +120,7 @@ def view_assignment_for_specific_date(update: Update, context: CallbackContext):
     date = message.split('/view')[1].strip()
     user_assignments = read_data(user_id)['assignments']
 
+    # delete the previous message with pages if the user used /view again
     if 'assignment_for_specific_date_id' in context.user_data.keys():
         update.message.bot.delete_message(user_id, context.user_data['assignment_for_specific_date_id'])
 
