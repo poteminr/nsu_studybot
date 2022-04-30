@@ -2,6 +2,7 @@ from scripts.database import read_data
 from scripts.schedule_api import get_group_seminars
 from scripts.registration import start
 import datetime
+from telegram_bot_pagination import InlineKeyboardSimplePaginator
 from telegram import ReplyKeyboardMarkup, Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     CommandHandler,
@@ -102,27 +103,69 @@ def send_assignment_to_user(update: Update, context: CallbackContext):
 
 
 conv_handler_view_assignment = ConversationHandler(
-        entry_points=[MessageHandler(Filters.regex('^Просмотреть домашние задания$'), view_assignment)],
-        states={
-            DATE: [CallbackQueryHandler(pick_seminar_date_from_list)],
-            ASSIGNMENT: [CallbackQueryHandler(send_assignment_to_user)]
-        },
-        fallbacks=[CommandHandler('start', start)],
+    entry_points=[MessageHandler(Filters.regex('^Просмотреть домашние задания$'), view_assignment)],
+    states={
+        DATE: [CallbackQueryHandler(pick_seminar_date_from_list)],
+        ASSIGNMENT: [CallbackQueryHandler(send_assignment_to_user)]
+    },
+    fallbacks=[CommandHandler('start', start)],
+)
+
+
+def view_assignment_for_specific_date(update: Update, context: CallbackContext):
+    user_id = update.message.chat['id']
+    message = update.message.text
+
+    date = message.split('/view')[1].strip()
+    user_assignments = read_data(user_id)['assignments']
+
+    if 'assignment_for_specific_date_id' in context.user_data.keys():
+        update.message.bot.delete_message(user_id, context.user_data['assignment_for_specific_date_id'])
+
+    assignments_for_the_date = []
+    for seminar_name in user_assignments.keys():
+        if date in user_assignments[seminar_name].keys():
+            text = f"{date}" \
+                   f"\n{seminar_name}" \
+                   f"\n\n{user_assignments[seminar_name][date]['text']}"
+
+            assignments_for_the_date.append(text)
+
+    if len(assignments_for_the_date) != 0:
+        paginator = InlineKeyboardSimplePaginator(
+            page_count=len(assignments_for_the_date),
+            data_pattern='assignment#{page}'
+        )
+
+        assignments_for_specific_date_message = update.message.reply_text(
+            text=assignments_for_the_date[0],
+            reply_markup=paginator.markup,
+            parse_mode='Markdown'
+        )
+
+        context.user_data['assignments_for_the_date'] = assignments_for_the_date
+        context.user_data['assignment_for_specific_date_id'] = assignments_for_specific_date_message.message_id
+    else:
+        update.message.reply_text(f'Заданий на {date} не найдено!')
+
+    update.message.bot.delete_message(user_id, update.message.message_id)
+
+
+def view_page(update: Update, context: CallbackContext):
+    query = update.callback_query
+    print(context)
+    query.answer()
+
+    page = int(query.data.split('#')[1])
+
+    paginator = InlineKeyboardSimplePaginator(
+        len(context.user_data['assignments_for_the_date']),
+        current_page=page,
+        data_pattern='assignment#{page}'
     )
 
-
-def view_assignment_for_specific_date(update: Update, _: CallbackContext):
-    # user_id = update.message.chat['id']
-    # message = update.message.text
-    #
-    # date = message.split('/view')[1].strip()
-    #
-    # user_data = read_data(user_id)['assignments']
-    # text = ""
-    # for seminar_name in user_data.keys():
-    #     if date in user_data[seminar_name].keys():
-    #         text += user_data[seminar_name][date]['text']
-    #
-    # update.message.reply_text(text)
-
-    raise NotImplemented
+    query.edit_message_text(
+        text=context.user_data['assignments_for_the_date'][page - 1],
+        reply_markup=paginator.markup,
+        parse_mode='Markdown'
+    )
