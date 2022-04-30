@@ -45,13 +45,13 @@ def pick_seminar_date_from_list(update: Update, context: CallbackContext):
     query.answer()
 
     user_id = query.message.chat.id
-    user_data = read_data(user_id)['assignments']
+    user_assignments = read_data(user_id)['assignments']
 
     seminar_index = query.data
     seminar_name = query.message.reply_markup.inline_keyboard[int(seminar_index)][0]['text']
     context.user_data['user_seminar_choice'] = seminar_name
 
-    if seminar_name not in user_data.keys():
+    if seminar_name not in user_assignments.keys():
         query.edit_message_text(text=f'Данные по предмету "{seminar_name}" отсутствуют')
 
         update.callback_query.message.bot.delete_message(user_id,
@@ -60,7 +60,7 @@ def pick_seminar_date_from_list(update: Update, context: CallbackContext):
         return ConversationHandler.END
 
     else:
-        seminar_dates_with_assignments = list(user_data[seminar_name].keys())
+        seminar_dates_with_assignments = list(user_assignments[seminar_name].keys())
         seminar_dates_with_assignments.sort(key=lambda d: datetime.datetime.strptime(d, "%d.%m.%Y"))
 
         keyboard = [[InlineKeyboardButton(date, callback_data=date)] for date in seminar_dates_with_assignments]
@@ -75,13 +75,13 @@ def send_assignment_to_user(update: Update, context: CallbackContext):
     query.answer()
 
     user_id = query.message.chat.id
-    user_data = read_data(user_id)['assignments']
+    user_assignments = read_data(user_id)['assignments']
 
     seminar_date = query.data
     seminar_name = context.user_data['user_seminar_choice']
 
-    if seminar_name in user_data.keys():
-        data = user_data[seminar_name][seminar_date]
+    if seminar_name in user_assignments.keys():
+        data = user_assignments[seminar_name][seminar_date]
         if 'photo' in data.keys():
             if 'text' in data.keys():
                 update.callback_query.message.reply_photo(data['photo'], caption=f"'{seminar_name}' на {seminar_date}"
@@ -155,7 +155,6 @@ def view_assignment_for_specific_date(update: Update, context: CallbackContext):
 
 def view_page(update: Update, context: CallbackContext):
     query = update.callback_query
-    print(context)
     query.answer()
 
     page = int(query.data.split('#')[1])
