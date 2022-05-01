@@ -47,15 +47,11 @@ class Assignment:
     def _get_path(self) -> List[Optional[str]]:
         return ['assignments', self.seminar_name, self.date]
 
-    def upload_to_database(self, user_id: int, database_path: str = './data.json') -> None:
-        with open(database_path) as f:
-            data = json.load(f)
+    def upload_to_database(self, user_id: int, database_directory: str = 'data/') -> None:
+        with open(f"{database_directory}{user_id}.json") as f:
+            user_data = json.load(f)
 
-        user_id = str(user_id)
-        if user_id not in data.keys():
-            data[user_id] = {}
-
-        pointer = data[user_id]
+        pointer = user_data
         for ind, field in enumerate(self._get_path()):
             if ind == len(self._get_path()) - 1:
                 pointer.update({field: self._create_dict_with_data()})
@@ -67,22 +63,20 @@ class Assignment:
 
         del pointer
 
-        with open(database_path, 'w') as f:
-            json.dump(data, f, ensure_ascii=False)
+        with open(f"{database_directory}{user_id}.json", 'w') as f:
+            json.dump(user_data, f, ensure_ascii=False)
 
-    def remove_from_database(self, user_id: int, database_path: str = './data.json') -> None:
-        with open(database_path) as f:
-            data = json.load(f)
+    def remove_from_database(self, user_id: int, database_directory: str = 'data/') -> None:
+        with open(f"{database_directory}{user_id}.json") as f:
+            user_data = json.load(f)
 
-        user_id = str(user_id)
-
-        if len(data[user_id]['assignments'][self.seminar_name].keys()) == 1:
-            data[user_id]['assignments'].pop(self.seminar_name)
+        if len(user_data['assignments'][self.seminar_name].keys()) == 1:
+            user_data['assignments'].pop(self.seminar_name)
         else:
-            data[user_id]['assignments'][self.seminar_name].pop(self.date)
+            user_data['assignments'][self.seminar_name].pop(self.date)
 
-        with open(database_path, 'w') as f:
-            json.dump(data, f, ensure_ascii=False)
+        with open(f"{database_directory}{user_id}.json", 'w') as f:
+            json.dump(user_data, f, ensure_ascii=False)
 
     def create_text(self) -> str:
         if self.photo_data is not None:

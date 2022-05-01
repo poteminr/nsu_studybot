@@ -1,30 +1,30 @@
 import json
 from typing import Union, Optional
+import glob
 
 
 def write_data(user_id: int, field: str, value: Union[str, int]) -> None:
-    with open('./data.json') as f:
-        data = json.load(f)
+    if f"data/{user_id}.json" not in glob.glob("data/*.json"):
+        with open(f"data/{user_id}.json", "w") as f:
+            json.dump({"assignments": {}}, f)
 
-    user_id = str(user_id)
+    with open(f"data/{user_id}.json") as f:
+        user_data = json.load(f)
 
-    if user_id not in data.keys():
-        data[user_id] = {"assignments": {}}
+    user_data[field] = value
 
-    data[user_id][field] = value
-
-    with open('./data.json', 'w') as f:
-        json.dump(data, f, ensure_ascii=False)
+    with open(f"data/{user_id}.json", 'w') as f:
+        json.dump(user_data, f, ensure_ascii=False)
 
 
 def read_data(user_id: int) -> Optional[dict]:
-    with open('./data.json') as f:
-        data = json.load(f)
+    if f"data/{user_id}.json" in glob.glob("data/*.json"):
+        with open(f"data/{user_id}.json") as f:
+            user_data = json.load(f)
 
-        if str(user_id) in data.keys():
-            return data[str(user_id)]
-        else:
-            return None
+        return user_data
+    else:
+        return None
 
 
 def read_cities_data() -> dict:
