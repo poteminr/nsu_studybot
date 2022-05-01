@@ -8,16 +8,12 @@ import json
 class Assignment:
     seminar_name: str = None
     date: str = None
-    assignment_type: str = None
     text_data: str = None
     photo_data: str = None
     future_seminars_dates: List[str] = None
 
     def get_message_after_uploading(self) -> str:
-        if self.assignment_type == 'photo':
-            return f"Фотография '{self.seminar_name}' на {self.date} успешно загружена!"
-        else:
-            return f"Задание по '{self.seminar_name}' на {self.date} успешно загружено!"
+        return f"Задание по '{self.seminar_name}' на {self.date} успешно загружено!"
 
     def get_message_after_deleting(self) -> str:
         return f"Задание по '{self.seminar_name}' на {self.date} успешно удалено!"
@@ -32,10 +28,8 @@ class Assignment:
 
     def parse_message(self, message: Message) -> None:
         if len(message.photo) == 0:
-            self.assignment_type = 'text'
             self.text_data = self._parse_text(message.text)
         else:
-            self.assignment_type = 'photo'
             self.photo_data = message.photo[-1]['file_id']
             if message.caption is not None:
                 self.text_data = self._parse_text(message.caption)
@@ -90,7 +84,7 @@ class Assignment:
         with open(database_path, 'w') as f:
             json.dump(data, f, ensure_ascii=False)
 
-    def create_text(self):
+    def create_text(self) -> str:
         if self.photo_data is not None:
             text = f"*{self.date}*" \
                    f"\n{len(self.date) * '-'}"\
@@ -99,7 +93,7 @@ class Assignment:
                    f"\n _Доступна фотография, вы можете посмотреть ее вручную_"
 
             if self.text_data is not None:
-                text += f"\n{self.text_data}"
+                text += f"\n\n Подпись: {self.text_data}"
         else:
             text = f"*{self.date}*" \
                    f"\n{len(self.date) * '-'}" \

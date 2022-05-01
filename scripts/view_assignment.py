@@ -82,18 +82,18 @@ def send_assignment_to_user(update: Update, context: CallbackContext):
     seminar_name = context.user_data['user_seminar_choice']
 
     if seminar_name in user_assignments.keys():
-        data = user_assignments[seminar_name][seminar_date]
-        if 'photo' in data.keys():
-            if 'text' in data.keys():
-                update.callback_query.message.reply_photo(data['photo'], caption=f"'{seminar_name}' на {seminar_date}"
-                                                                                 f"\n\nТекст: {data['text']}")
+        seminar_data = user_assignments[seminar_name][seminar_date]
+        if 'photo_data' in seminar_data.keys():
+            if 'text_data' in seminar_data.keys():
+                update.callback_query.message.reply_photo(seminar_data['photo_data'], caption=f"'{seminar_name}' на {seminar_date}"
+                                                                                 f"\n\nТекст: {seminar_data['text_data']}")
             else:
-                update.callback_query.message.reply_photo(data['photo'], caption=f"'{seminar_name}' на {seminar_date}")
+                update.callback_query.message.reply_photo(seminar_data['photo_data'], caption=f"'{seminar_name}' на {seminar_date}")
 
             query.delete_message()
 
         else:
-            query.edit_message_text(text=f"{seminar_name} на {seminar_date}:\n{data['text']}")
+            query.edit_message_text(text=f"{seminar_name} на {seminar_date}:\n{seminar_data['text_data']}")
 
     else:
         query.edit_message_text(text=f'Данные по предмету "{seminar_name}" отсутствуют')

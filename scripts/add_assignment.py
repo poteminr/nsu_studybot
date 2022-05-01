@@ -112,7 +112,7 @@ def add_assignment(update: Update, context: CallbackContext):
     context.user_data['user_group'] = user_group
 
     if user_group is not None:
-        context.user_data['command_to_add_mes_id_1'] = update.message['message_id']
+        context.user_data['command_to_add_mes_id_1'] = update.message.message_id
 
         seminars, _, seminars_weekdays = get_group_seminars(user_group)
 
@@ -182,10 +182,11 @@ def choose_assignment_date(update: Update, context: CallbackContext):
             query.message.bot.delete_message(user_id, context.user_data['command_to_add_mes_id_1'])
             return ConversationHandler.END
 
-        dates_of_added_assignments = list(user_data['assignments'][assignment.seminar_name].keys())
+        else:
+            dates_of_added_assignments = list(user_data['assignments'][assignment.seminar_name].keys())
 
-        buttons = [InlineKeyboardButton(date, callback_data=date) for date in dates_of_added_assignments]
-        keyboard = [buttons[k:k + 2] for k in range(0, len(buttons), 2)]
+            buttons = [InlineKeyboardButton(date, callback_data=date) for date in dates_of_added_assignments]
+            keyboard = [buttons[k:k + 2] for k in range(0, len(buttons), 2)]
 
     reply_markup = InlineKeyboardMarkup(keyboard)
     query.edit_message_text(text="Выберите дату занятия.", reply_markup=reply_markup)
@@ -207,23 +208,23 @@ def process_assignment_date(update: Update, context: CallbackContext):
 
     else:
         user_id = query.message.chat['id']
-        user_data = read_data(user_id)
+        user_assignments = read_data(user_id)['assignments']
 
-        data = user_data['assignments'][assignment.seminar_name][assignment.date]
+        seminar_data = user_assignments[assignment.seminar_name][assignment.date]
 
         keyboard = [[InlineKeyboardButton('Удалить запись', callback_data='delete')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
 
-        if 'photo' in data.keys():
-            if 'text' in data.keys():
-                bot_reply_message = update.callback_query.message.reply_photo(data['photo'],
+        if 'photo_data' in seminar_data.keys():
+            if 'text_data' in seminar_data.keys():
+                bot_reply_message = update.callback_query.message.reply_photo(seminar_data['photo_data'],
                                                                               caption=f"'{assignment.seminar_name}' на {assignment.date}"
-                                                                                      f"\n\nТекст: {data['text']}"
+                                                                                      f"\n\nТекст: {seminar_data['text_data']}"
                                                                                       f"\n\nОтправьте фотографию или текст, чтобы заменить задание!"
                                                                                       f"\n1) Используйте /add как подпись к фотографии "
                                                                                       f"\n2) /add текст", reply_markup=reply_markup)
             else:
-                bot_reply_message = update.callback_query.message.reply_photo(data['photo'],
+                bot_reply_message = update.callback_query.message.reply_photo(seminar_data['photo_data'],
                                                                               caption=f"'{assignment.seminar_name}' на {assignment.date}"
                                                                                       f"\n\nОтправьте фотографию или текст, чтобы заменить задание!"
                                                                                       f"\n1) Используйте /add как подпись к фотографии "
@@ -233,7 +234,7 @@ def process_assignment_date(update: Update, context: CallbackContext):
 
         else:
             bot_reply_message = query.edit_message_text(text=f"{assignment.seminar_name} на {assignment.date}:"
-                                                             f"\n{data['text']} "
+                                                             f"\n{seminar_data['text_data']} "
                                                              f"\n\nОтправьте фотографию или текст, чтобы заменить задание!"
                                                              f"\n1) Используйте /add как подпись к фотографии "
                                                              f"\n2) /add текст", reply_markup=reply_markup)
