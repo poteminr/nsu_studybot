@@ -1,6 +1,7 @@
 from scripts.database import read_data
 from scripts.schedule_api import get_group_seminars
 from scripts.registration import start
+from scripts.assignment import Assignment
 import datetime
 from telegram_bot_pagination import InlineKeyboardSimplePaginator
 from telegram import ReplyKeyboardMarkup, Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -127,11 +128,8 @@ def view_assignment_for_specific_date(update: Update, context: CallbackContext):
     assignments_for_the_date = []
     for seminar_name in user_assignments.keys():
         if date in user_assignments[seminar_name].keys():
-            text = f"{date}" \
-                   f"\n{seminar_name}" \
-                   f"\n\n{user_assignments[seminar_name][date]['text']}"
-
-            assignments_for_the_date.append(text)
+            assignment = Assignment(seminar_name=seminar_name, date=date, **user_assignments[seminar_name][date])
+            assignments_for_the_date.append(assignment.create_text())
 
     if len(assignments_for_the_date) != 0:
         paginator = InlineKeyboardSimplePaginator(
@@ -157,16 +155,18 @@ def view_page(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
 
+    assignments_for_the_date = context.user_data['assignments_for_the_date']
+
     page = int(query.data.split('#')[1])
 
     paginator = InlineKeyboardSimplePaginator(
-        len(context.user_data['assignments_for_the_date']),
+        len(assignments_for_the_date),
         current_page=page,
         data_pattern='assignment#{page}'
     )
 
     query.edit_message_text(
-        text=context.user_data['assignments_for_the_date'][page - 1],
+        text=assignments_for_the_date[page - 1],
         reply_markup=paginator.markup,
         parse_mode='Markdown'
     )

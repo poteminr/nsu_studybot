@@ -42,13 +42,13 @@ class Assignment:
 
     def _create_dict_with_data(self) -> dict:
         if all([self.photo_data, self.text_data]):
-            return {"photo": self.photo_data, "text": self.text_data}
+            return {"photo_data": self.photo_data, "text_data": self.text_data}
 
         elif self.photo_data is not None:
-            return {"photo": self.photo_data}
+            return {"photo_data": self.photo_data}
 
         elif self.text_data is not None:
-            return {"text": self.text_data}
+            return {"text_data": self.text_data}
 
     def _get_path(self) -> List[Optional[str]]:
         return ['assignments', self.seminar_name, self.date]
@@ -89,3 +89,22 @@ class Assignment:
 
         with open(database_path, 'w') as f:
             json.dump(data, f, ensure_ascii=False)
+
+    def create_text(self):
+        if self.photo_data is not None:
+            text = f"*{self.date}*" \
+                   f"\n{len(self.date) * '-'}"\
+                   f"\n*{self.seminar_name}*" \
+                   f"\n{len(self.seminar_name) * '-'}" \
+                   f"\n _Доступна фотография, вы можете посмотреть ее вручную_"
+
+            if self.text_data is not None:
+                text += f"\n{self.text_data}"
+        else:
+            text = f"*{self.date}*" \
+                   f"\n{len(self.date) * '-'}" \
+                   f"\n*{self.seminar_name}*" \
+                   f"\n{len(self.seminar_name) * '-'}" \
+                   f"\n\n{self.text_data}"
+
+        return text
