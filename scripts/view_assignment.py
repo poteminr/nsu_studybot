@@ -5,6 +5,7 @@ from scripts.assignment import Assignment
 import datetime
 from telegram_bot_pagination import InlineKeyboardSimplePaginator
 from telegram import ReplyKeyboardMarkup, Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.error import BadRequest
 from telegram.ext import (
     CommandHandler,
     CallbackContext,
@@ -111,6 +112,7 @@ conv_handler_view_assignment = ConversationHandler(
         ASSIGNMENT: [CallbackQueryHandler(send_assignment_to_user)]
     },
     fallbacks=[CommandHandler('start', start)],
+    allow_reentry=True
 )
 
 
@@ -121,9 +123,15 @@ def view_assignment_for_specific_date(update: Update, context: CallbackContext):
     date = message.split('/view')[1].strip()
     user_assignments = read_data(user_id)['assignments']
 
+    # delete user command /view date
+    update.message.bot.delete_message(user_id, update.message.message_id)
+
     # delete the previous message with pages if the user used /view again
     if 'assignment_for_specific_date_id' in context.user_data.keys():
-        update.message.bot.delete_message(user_id, context.user_data['assignment_for_specific_date_id'])
+        try:
+            update.message.bot.delete_message(user_id, context.user_data['assignment_for_specific_date_id'])
+        except BadRequest:
+            pass
 
     assignments_for_the_date = []
     for seminar_name in user_assignments.keys():

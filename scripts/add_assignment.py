@@ -293,4 +293,5 @@ conv_handler_add_assignment_by_hand = ConversationHandler(
         ]
     },
     fallbacks=[CommandHandler('start', start)],
+    allow_reentry=True,
 )

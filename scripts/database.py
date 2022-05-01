@@ -9,7 +9,7 @@ def write_data(user_id: int, field: str, value: Union[str, int]) -> None:
     user_id = str(user_id)
 
     if user_id not in data.keys():
-        data[user_id] = {}
+        data[user_id] = {"assignments": {}}
 
     data[user_id][field] = value
 
