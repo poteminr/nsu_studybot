@@ -1,12 +1,16 @@
 # StudyBot for NSU students 
-
 <p align="center">
-<img src="https://i.ibb.co/SNgYqwJ/Group-1.png" align="middle" alt="alt text" width="100"/>
+<img src="images/info_1.png" align="middle" alt="alt text" width="600"/>
 </p>
 
 <p align="center">
-<img src="https://i.ibb.co/bRSxRPc/studybot-info.png" align="middle" alt="alt text" width="600"/>
+<img src="images/info_2.png" align="middle" alt="alt text" width="600"/>
 </p>
+
 <p align="center">
-<img src="https://i.ibb.co/bNzdxjp/Screenshot-2021-04-29-at-21-37-54.png" align="middle" alt="alt text" width="600"/>
+<img src="images/info_3.png" align="middle" alt="alt text" width="600"/>
+</p>
+
+<p align="center">
+<img src="images/info_4.png" align="middle" alt="alt text" width="600"/>
 </p>
