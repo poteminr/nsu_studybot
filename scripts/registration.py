@@ -1,9 +1,11 @@
 from scripts.bot_functions import university_code2text
 from scripts.database import write_data, read_cities_data
 from scripts.schedule_api import get_group_id
+from telegram_bot_pagination import InlineKeyboardSimplePaginator
 import logging
-from telegram import ReplyKeyboardMarkup, Update, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import ReplyKeyboardMarkup, Update, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
 from telegram.ext import CommandHandler, CallbackContext, ConversationHandler, CallbackQueryHandler
+
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -17,7 +19,14 @@ def start(update: Update, _: CallbackContext):
     user = update.message.from_user
     logger.info("User %s started the conversation.", user.first_name)
 
-    update.message.reply_photo(photo=open("images/studybot_info.png", 'rb'), reply_markup=ReplyKeyboardRemove())
+    paginator = InlineKeyboardSimplePaginator(
+        page_count=4,
+        data_pattern='bot_info#{page}'
+    )
+
+    update.message.reply_photo(photo=open("images/info_1.png", 'rb'),
+                               reply_markup=paginator.markup,
+                               parse_mode='Markdown')
 
     cities_data = read_cities_data()
 
@@ -28,6 +37,36 @@ def start(update: Update, _: CallbackContext):
     update.message.reply_text("Выберите свой город 🏢", reply_markup=reply_markup)
 
     return CITY
+
+
+def info(update: Update, _: CallbackContext):
+    paginator = InlineKeyboardSimplePaginator(
+        page_count=4,
+        data_pattern='bot_info#{page}'
+    )
+
+    update.message.reply_photo(photo=open("images/info_1.png", 'rb'),
+                               reply_markup=paginator.markup,
+                               parse_mode='Markdown')
+
+
+def change_page_with_information(update: Update, _: CallbackContext):
+    query = update.callback_query
+    query.answer()
+
+    page = int(query.data.split('#')[1])
+
+    paginator = InlineKeyboardSimplePaginator(
+        page_count=4,
+        current_page=page,
+        data_pattern='bot_info#{page}'
+    )
+
+    page_numbers = range(1, 5)
+    query.edit_message_media(
+        media=InputMediaPhoto(open(f"images/info_{page_numbers[page-1]}.png", "rb")),
+        reply_markup=paginator.markup,
+    )
 
 
 def start_over(update: Update, _: CallbackContext):

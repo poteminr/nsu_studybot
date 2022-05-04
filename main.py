@@ -1,5 +1,5 @@
 from scripts.private_keys import import_private_keys
-from scripts.registration import init_user_group, conv_handler_pick_university
+from scripts.registration import init_user_group, conv_handler_pick_university, change_page_with_information, info
 from scripts.view_assignment import conv_handler_view_assignment, view_assignment_for_specific_date, view_page
 from scripts.add_assignment import conv_handler_add_assignment_by_hand, conv_handler_add_assignment_during_seminar
 import logging
@@ -28,6 +28,7 @@ def main():
     dispatcher = updater.dispatcher
 
     dispatcher.add_handler(CommandHandler("group", init_user_group))
+    updater.dispatcher.add_handler(CallbackQueryHandler(change_page_with_information, pattern='^bot_info#'))
 
     dispatcher.add_handler(conv_handler_pick_university)
 
@@ -38,6 +39,7 @@ def main():
     dispatcher.add_handler(conv_handler_add_assignment_during_seminar)
 
     dispatcher.add_handler(CommandHandler("restart", restart))
+    dispatcher.add_handler(CommandHandler("info", info))
 
     dispatcher.add_handler(CommandHandler("view", view_assignment_for_specific_date))
     updater.dispatcher.add_handler(CallbackQueryHandler(view_page, pattern='^assignment#'))
