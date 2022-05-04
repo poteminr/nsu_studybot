@@ -28,7 +28,7 @@ def main():
     dispatcher = updater.dispatcher
 
     dispatcher.add_handler(CommandHandler("group", init_user_group))
-    updater.dispatcher.add_handler(CallbackQueryHandler(change_page_with_information, pattern='^bot_info#'))
+    dispatcher.add_handler(CallbackQueryHandler(change_page_with_information, pattern='^bot_info#'))
 
     dispatcher.add_handler(conv_handler_pick_university)
 
@@ -39,6 +39,7 @@ def main():
     dispatcher.add_handler(conv_handler_add_assignment_during_seminar)
 
     dispatcher.add_handler(CommandHandler("restart", restart))
+
     dispatcher.add_handler(CommandHandler("info", info))
 
     dispatcher.add_handler(CommandHandler("view", view_assignment_for_specific_date))
