@@ -12,10 +12,12 @@ class Assignment:
     photo_data: str = None
     future_seminars_dates: List[str] = None
 
-    def get_message_after_uploading(self) -> str:
+    @property
+    def message_after_uploading(self) -> str:
         return f"Задание по '{self.seminar_name}' на {self.date} успешно загружено!"
 
-    def get_message_after_deleting(self) -> str:
+    @property
+    def message_after_deleting(self) -> str:
         return f"Задание по '{self.seminar_name}' на {self.date} успешно удалено!"
 
     @staticmethod
@@ -78,21 +80,22 @@ class Assignment:
         with open(f"{database_directory}{user_id}.json", 'w') as f:
             json.dump(user_data, f, ensure_ascii=False)
 
-    def create_text(self) -> str:
+    def to_string(self) -> [str, str]:
         if self.photo_data is not None:
-            text = f"*{self.date}*" \
+            data_type = "photo"
+            text = f"{self.date}" \
                    f"\n{len(self.date) * '-'}"\
-                   f"\n*{self.seminar_name}*" \
+                   f"\n{self.seminar_name}" \
                    f"\n{len(self.seminar_name) * '-'}" \
-                   f"\n _Доступна фотография, вы можете посмотреть ее вручную_"
 
             if self.text_data is not None:
                 text += f"\n\n Подпись: {self.text_data}"
         else:
+            data_type = "text"
             text = f"*{self.date}*" \
                    f"\n{len(self.date) * '-'}" \
                    f"\n*{self.seminar_name}*" \
                    f"\n{len(self.seminar_name) * '-'}" \
                    f"\n\n{self.text_data}"
 
-        return text
+        return text, data_type

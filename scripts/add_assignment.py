@@ -65,7 +65,7 @@ def choose_another_date(update: Update, context: CallbackContext):
 
     if user_choice == 'next_seminar':
         assignment.upload_to_database(user_id)
-        query.edit_message_text(assignment.get_message_after_uploading())
+        query.edit_message_text(assignment.message_after_uploading)
 
         return ConversationHandler.END
 
@@ -89,7 +89,7 @@ def upload_to_another_date(update: Update, context: CallbackContext):
     user_id = query.message.chat.id
 
     assignment.upload_to_database(user_id)
-    query.edit_message_text(assignment.get_message_after_uploading())
+    query.edit_message_text(assignment.message_after_uploading)
 
     return ConversationHandler.END
 
@@ -252,7 +252,7 @@ def remove_assignment_from_database(update: Update, context: CallbackContext):
     assignment = context.user_data['assignment']
 
     assignment.remove_from_database(user_id)
-    query.edit_message_text(assignment.get_message_after_deleting())
+    query.edit_message_text(assignment.message_after_deleting)
 
     query.message.bot.delete_message(user_id,
                                      context.user_data['command_to_add_mes_id_1'])
@@ -267,7 +267,7 @@ def upload_assignment_to_database(update: Update, context: CallbackContext):
     assignment.parse_message(update.message)
     assignment.upload_to_database(user_id)
 
-    update.message.reply_text(assignment.get_message_after_uploading(), reply_markup=reply_markup_keyboard)
+    update.message.reply_text(assignment.message_after_uploading, reply_markup=reply_markup_keyboard)
 
     update.message.bot.delete_message(user_id,
                                       context.user_data['command_to_add_mes_id_1'])
