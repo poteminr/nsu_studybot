@@ -4,7 +4,7 @@ from scripts.registration import start
 from scripts.assignment import Assignment
 import datetime
 from telegram_bot_pagination import InlineKeyboardSimplePaginator
-from telegram import ReplyKeyboardMarkup, Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import ReplyKeyboardMarkup, Update, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
 from telegram.error import BadRequest
 from telegram.ext import (
     CommandHandler,
@@ -86,10 +86,12 @@ def send_assignment_to_user(update: Update, context: CallbackContext):
         seminar_data = user_assignments[seminar_name][seminar_date]
         if 'photo_data' in seminar_data.keys():
             if 'text_data' in seminar_data.keys():
-                update.callback_query.message.reply_photo(seminar_data['photo_data'], caption=f"'{seminar_name}' на {seminar_date}"
-                                                                                 f"\n\nТекст: {seminar_data['text_data']}")
+                update.callback_query.message.reply_photo(seminar_data['photo_data'],
+                                                          caption=f"'{seminar_name}' на {seminar_date}"
+                                                                  f"\n\nТекст: {seminar_data['text_data']}")
             else:
-                update.callback_query.message.reply_photo(seminar_data['photo_data'], caption=f"'{seminar_name}' на {seminar_date}")
+                update.callback_query.message.reply_photo(seminar_data['photo_data'],
+                                                          caption=f"'{seminar_name}' на {seminar_date}")
 
             query.delete_message()
 
@@ -99,8 +101,8 @@ def send_assignment_to_user(update: Update, context: CallbackContext):
     else:
         query.edit_message_text(text=f'Данные по предмету "{seminar_name}" отсутствуют')
 
-    update.callback_query.message.bot.delete_message(user_id,
-                                                     context.user_data['command_to_view_message_id'])
+    query.message.bot.delete_message(user_id,
+                                     context.user_data['command_to_view_message_id'])
 
     return ConversationHandler.END
 
@@ -136,7 +138,10 @@ def view_assignment_for_specific_date(update: Update, context: CallbackContext):
     for seminar_name in user_assignments.keys():
         if date in user_assignments[seminar_name].keys():
             assignment = Assignment(seminar_name=seminar_name, date=date, **user_assignments[seminar_name][date])
-            assignments_for_the_date.append(assignment.create_text())
+
+            assignments_for_the_date.append({'data_type': assignment.to_string()[1],
+                                             "text": assignment.to_string()[0],
+                                             "photo": assignment.photo_data})
 
     if len(assignments_for_the_date) != 0:
         paginator = InlineKeyboardSimplePaginator(
@@ -144,14 +149,23 @@ def view_assignment_for_specific_date(update: Update, context: CallbackContext):
             data_pattern='assignment#{page}'
         )
 
-        assignments_for_specific_date_message = update.message.reply_text(
-            text=assignments_for_the_date[0],
-            reply_markup=paginator.markup,
-            parse_mode='Markdown'
-        )
+        if assignments_for_the_date[0]['data_type'] == "text":
+            assignments_for_specific_date_message = update.message.reply_text(
+                text=assignments_for_the_date[0]['text'],
+                reply_markup=paginator.markup,
+                parse_mode='Markdown'
+            )
+        else:
+            assignments_for_specific_date_message = update.message.reply_photo(
+                photo=assignments_for_the_date[0]['photo'],
+                caption=assignments_for_the_date[0]['text'],
+                reply_markup=paginator.markup,
+                parse_mode='Markdown'
+            )
 
         context.user_data['assignments_for_the_date'] = assignments_for_the_date
         context.user_data['assignment_for_specific_date_id'] = assignments_for_specific_date_message.message_id
+        context.user_data['previous_page_data_type'] = assignments_for_the_date[0]['data_type']
     else:
         update.message.reply_text(f'Заданий на {date} не найдено!')
 
@@ -160,10 +174,10 @@ def view_assignment_for_specific_date(update: Update, context: CallbackContext):
 
 def view_page(update: Update, context: CallbackContext):
     query = update.callback_query
+    user_id = query.message.chat.id
     query.answer()
 
     assignments_for_the_date = context.user_data['assignments_for_the_date']
-
     page = int(query.data.split('#')[1])
 
     paginator = InlineKeyboardSimplePaginator(
@@ -171,9 +185,38 @@ def view_page(update: Update, context: CallbackContext):
         current_page=page,
         data_pattern='assignment#{page}'
     )
+    previous_page_data_type = context.user_data['previous_page_data_type']
+    current_page_data = assignments_for_the_date[page - 1]
 
-    query.edit_message_text(
-        text=assignments_for_the_date[page - 1],
-        reply_markup=paginator.markup,
-        parse_mode='Markdown'
-    )
+    if current_page_data['data_type'] == previous_page_data_type:
+        if current_page_data['data_type'] == 'text':
+            assignments_for_specific_date_message = query.edit_message_text(
+                text=current_page_data['text'],
+                reply_markup=paginator.markup,
+                parse_mode='Markdown'
+            )
+        else:
+            assignments_for_specific_date_message = query.edit_message_media(
+                media=InputMediaPhoto(current_page_data['photo'],
+                caption=current_page_data['text']),
+                reply_markup=paginator.markup,
+            )
+
+    else:
+        query.message.bot.delete_message(user_id, context.user_data['assignment_for_specific_date_id'])
+        if current_page_data['data_type'] == "text":
+            assignments_for_specific_date_message = query.message.reply_text(
+                text=current_page_data['text'],
+                reply_markup=paginator.markup,
+                parse_mode='Markdown'
+            )
+        else:
+            assignments_for_specific_date_message = query.message.reply_photo(
+                photo=current_page_data['photo'],
+                caption=current_page_data['text'],
+                reply_markup=paginator.markup,
+                parse_mode='Markdown'
+            )
+
+    context.user_data['assignment_for_specific_date_id'] = assignments_for_specific_date_message.message_id
+    context.user_data['previous_page_data_type'] = current_page_data['data_type']
